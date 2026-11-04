@@ -1,20 +1,25 @@
 #[tauri::command]
-fn app_minimize(window: tauri::Window) {
-    let _ = window.minimize();
+fn app_minimize(_window: tauri::Window) {
+    #[cfg(desktop)]
+    let _ = _window.minimize();
 }
 
 #[tauri::command]
-fn app_maximize(window: tauri::Window) {
-    if window.is_maximized().unwrap_or(false) {
-        let _ = window.unmaximize();
-    } else {
-        let _ = window.maximize();
+fn app_maximize(_window: tauri::Window) {
+    #[cfg(desktop)]
+    {
+        if _window.is_maximized().unwrap_or(false) {
+            let _ = _window.unmaximize();
+        } else {
+            let _ = _window.maximize();
+        }
     }
 }
 
 #[tauri::command]
-fn app_close(window: tauri::Window) {
-    let _ = window.close();
+fn app_close(_window: tauri::Window) {
+    #[cfg(desktop)]
+    let _ = _window.close();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
