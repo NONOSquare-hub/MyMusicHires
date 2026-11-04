@@ -9,6 +9,8 @@ jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -109,3 +111,25 @@ jobs:
           name: MyMusic-Android-APK
           path: dist/MyMusic.apk
           if-no-files-found: error
+
+      - name: Publish Public GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: v1.0.0
+          name: "MyMusic Hi-Res v1.0.0"
+          draft: false
+          prerelease: false
+          make_latest: true
+          body: |
+            ## 🎵 MyMusic Hi-Res - Audiophile Player v1.0.0
+
+            ### 📱 Tải về trực tiếp cho Android (Không cần tài khoản GitHub):
+            Bấm trực tiếp vào file **`MyMusic.apk`** bên dưới phần **Assets** để tải và cài đặt ngay lên điện thoại.
+
+            - **Kiến trúc:** ARM64 (`aarch64-linux-android`)
+            - **Tính năng:** Nghe nhạc Offline 100%, Vinyl Turntable, Đồng bộ Google Drive, Sao lưu JSON.
+          files: |
+            dist/MyMusic.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
