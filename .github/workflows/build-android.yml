@@ -20,18 +20,15 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Setup Rust Stable Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
 
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@2
+      - name: Install Tauri CLI (Native Standalone Binary)
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall tauri-cli --no-confirm
 
       - name: Configure Android SDK & NDK Environment
         run: |
@@ -54,7 +51,7 @@ jobs:
           cd src-tauri
           if [ ! -d "gen/android" ]; then
             echo "Scaffolding Android native project..."
-            tauri android init --ci
+            cargo tauri android init --ci
           fi
           if [ -f "gen/android/gradlew" ]; then
             chmod +x gen/android/gradlew
@@ -65,10 +62,10 @@ jobs:
           cd src-tauri
           echo "Building APK for aarch64 (debug-signed)..."
           set +e
-          tauri android build --apk --debug --target aarch64 --ci > ../build.log 2>&1
+          cargo tauri android build --apk --debug --target aarch64 --ci > ../build.log 2>&1
           BUILD_STATUS=$?
           if [ $BUILD_STATUS -ne 0 ]; then
-            echo "❌ tauri android build failed with exit code $BUILD_STATUS"
+            echo "❌ cargo tauri android build failed with exit code $BUILD_STATUS"
             echo "### ⚠️ Build Failure Logs" >> $GITHUB_STEP_SUMMARY
             echo '```text' >> $GITHUB_STEP_SUMMARY
             tail -n 60 ../build.log >> $GITHUB_STEP_SUMMARY
@@ -107,7 +104,6 @@ jobs:
           fi
 
       - name: Upload Android APK Artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: MyMusic-Android-APK
