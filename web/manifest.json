@@ -1,0 +1,17 @@
+{
+  "name": "MyMusic Hi-Res",
+  "short_name": "MyMusic",
+  "description": "Cloud Hi-Res Audio Player with Vinyl Turntable & Zero-Disk RAM Ring",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050811",
+  "theme_color": "#050811",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/api/app_icon",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}

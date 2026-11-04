@@ -1,0 +1,60 @@
+name: Build MyMusic Apps (Windows & Android)
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager --install "ndk;26.1.10909125"
+
+      - name: Setup Rust Stable Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0.0" --locked
+
+      - name: Initialize and Build Android APK
+        env:
+          NDK_HOME: /usr/local/lib/android/sdk/ndk/26.1.10909125
+        run: |
+          cd src-tauri
+          # Initialize android template if not present
+          if [ ! -d "gen/android" ]; then
+            cargo tauri android init
+          fi
+          # Build APK
+          cargo tauri android build --apk
+
+      - name: Locate and Rename APK
+        run: |
+          mkdir -p dist
+          find src-tauri/gen/android -name "*.apk" -exec cp {} dist/MyMusic.apk \;
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyMusic-Android-APK
+          path: dist/MyMusic.apk
+          if-no-files-found: error

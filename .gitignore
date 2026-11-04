@@ -1,0 +1,12 @@
+/target
+covers/
+offline_cache/
+lyrics/
+library.json
+drive_bookmarks.json
+*.lib
+*.def
+*.pdb
+*.exe
+as.exe
+test_found_image.jpg

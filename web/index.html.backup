@@ -1,0 +1,3380 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Hi-Res Audio Player (Rust Core)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0B0E14;
+      --surface: #161B22;
+      --surface-light: #21262D;
+      --border: #30363D;
+      --text: #F0F6FC;
+      --text-muted: #8B949E;
+      --accent-purple: #9D4EDD;
+      --accent-gold: #F59E0B;
+      --accent-green: #10B981;
+      --accent-blue: #3B82F6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      user-select: none;
+    }
+    .app-container {
+      display: flex;
+      width: 100%;
+      height: calc(100vh - 96px);
+      overflow: hidden;
+    }
+    /* Fixed Non-Shrinking Sidebar */
+    .sidebar {
+      width: 260px;
+      min-width: 260px;
+      max-width: 260px;
+      flex-shrink: 0;
+      background: #0d1117;
+      border-right: 1px solid var(--border);
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      z-index: 5;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 1.15rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .nav-item {
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      white-space: nowrap;
+      transition: all 0.15s ease-in-out;
+    }
+    .nav-item:hover, .nav-item.active {
+      background: var(--surface);
+      color: #fff;
+    }
+    .nav-item.active {
+      border-left: 3px solid var(--accent-purple);
+    }
+    .storage-status-card {
+      margin-top: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 0.8rem;
+    }
+    .storage-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-green);
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.72rem;
+      margin-bottom: 6px;
+    }
+    /* Main Content */
+    .main-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: radial-gradient(circle at top right, rgba(157, 78, 221, 0.08), transparent 40%),
+                  radial-gradient(circle at top left, rgba(59, 130, 246, 0.05), transparent 40%),
+                  var(--bg);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 28px 36px;
+    }
+    .top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .greeting h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .greeting p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+    .sync-actions {
+      display: flex;
+      gap: 12px;
+    }
+    .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--accent-purple);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #8739c9; }
+    .btn-secondary {
+      background: var(--surface);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover { background: var(--surface-light); }
+    /* Visible Pill Chips */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .chip {
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+      white-space: nowrap;
+      transition: all 0.15s ease-in-out;
+    }
+    .chip:hover {
+      background: var(--surface-light);
+      color: var(--text);
+    }
+    .chip.active {
+      border-color: var(--accent-purple);
+      background: rgba(157, 78, 221, 0.2);
+      color: #e0b0ff;
+    }
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+    .track-table {
+      width: 100%;
+      min-width: 750px;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .track-table th {
+      padding: 12px 14px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid var(--border);
+    }
+    .track-table tr {
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+    .track-table tr:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .track-table tr.active-row {
+      background: rgba(157, 78, 221, 0.14);
+      border-left: 3px solid var(--accent-purple);
+    }
+    .track-table td {
+      padding: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.92rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .badge-local { background: rgba(59, 130, 246, 0.18); color: var(--accent-blue); }
+    .badge-cloud { background: rgba(157, 78, 221, 0.18); color: #c084fc; }
+    .badge-hires { background: rgba(245, 158, 11, 0.18); color: var(--accent-gold); }
+    .badge-lossless { background: rgba(16, 185, 129, 0.18); color: var(--accent-green); }
+    /* Fixed Bottom Player Bar */
+    .player-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 96px;
+      background: #0e1218;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 24px;
+      z-index: 99;
+    }
+    .player-track-info {
+      width: 320px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+    .album-art-thumb {
+      width: 58px;
+      height: 58px;
+      min-width: 58px;
+      background: linear-gradient(135deg, #1c2128, #2d333b);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      flex-shrink: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .track-meta h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 240px;
+    }
+    .track-meta p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 240px;
+    }
+    .player-controls {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .control-buttons {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .ctrl-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.15rem;
+      transition: color 0.15s;
+    }
+    .ctrl-btn:hover { color: var(--text); }
+    .play-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #fff;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(255,255,255,0.25);
+    }
+    .play-btn:hover { transform: scale(1.05); }
+    .progress-row {
+      width: 100%;
+      max-width: 550px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .progress-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--surface-light);
+      border-radius: 3px;
+      cursor: pointer;
+      position: relative;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-purple);
+      border-radius: 3px;
+      width: 0%;
+    }
+    .player-right-panel {
+      width: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+    .signal-path-pill {
+      background: rgba(157, 78, 221, 0.15);
+      border: 1px solid var(--accent-purple);
+      color: #d8b4fe;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .signal-path-pill:hover { background: rgba(157, 78, 221, 0.3); }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-purple);
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-card {
+      width: 520px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 26px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .form-input {
+      width: 100%;
+      background: #0B0E14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .form-input:focus {
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 0 2px rgba(157,78,221,0.25);
+    }
+    .input-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+    .path-step {
+      display: flex;
+      gap: 14px;
+      position: relative;
+      padding-bottom: 18px;
+    }
+    .path-step::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 24px;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .path-step:last-child::before { display: none; }
+    .step-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent-purple);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      z-index: 2;
+    }
+    .step-detail h5 { font-size: 0.9rem; font-weight: 700; }
+    .step-detail p { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+    .tab-btn.active {
+      color: var(--accent-purple);
+      border-bottom-color: var(--accent-purple);
+    }
+
+    /* ========================================================
+       NOW PLAYING IMMERSIVE VIEW (VINYL & SYNCED LYRICS)
+       ======================================================== */
+    .now-playing-trigger-btn {
+      background: linear-gradient(135deg, rgba(157, 78, 221, 0.25), rgba(99, 102, 241, 0.25));
+      border: 1px solid rgba(157, 78, 221, 0.5);
+      color: #e9d5ff;
+      padding: 7px 16px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+    .now-playing-trigger-btn:hover {
+      background: linear-gradient(135deg, rgba(157, 78, 221, 0.45), rgba(99, 102, 241, 0.45));
+      border-color: #c084fc;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(157, 78, 221, 0.35);
+    }
+
+    .np-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999999 !important;
+      background: #06080d !important;
+      display: none;
+      flex-direction: column;
+      opacity: 0;
+      transform: scale(0.985);
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      user-select: none;
+    }
+    .np-overlay.active {
+      display: flex;
+      opacity: 1 !important;
+      transform: scale(1);
+    }
+
+    /* Ambient Backdrop Blur */
+    .np-backdrop {
+      position: absolute;
+      inset: -50px;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 1;
+      background: #06080d;
+    }
+    #np-backdrop-img {
+      width: calc(100% + 100px);
+      height: calc(100% + 100px);
+      object-fit: cover;
+      filter: blur(85px) brightness(0.24) saturate(2.2);
+      transform: scale(1.12);
+      transition: opacity 0.8s ease, filter 0.8s ease;
+      opacity: 0;
+    }
+    .np-backdrop-gradient {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 35% 35%, rgba(13, 17, 28, 0.45) 0%, rgba(6, 8, 13, 0.92) 70%, #06080d 100%);
+    }
+
+    /* Main Now Playing Container */
+    .np-container {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 36px;
+      box-sizing: border-box;
+    }
+
+    /* Top Bar */
+    .np-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      flex-shrink: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 8px;
+    }
+    .np-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+      padding: 7px 16px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .np-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .np-top-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      text-align: center;
+    }
+    .np-mode-badge {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #c084fc;
+      background: rgba(168, 85, 247, 0.16);
+      padding: 2px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+    .np-top-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #94a3b8;
+      max-width: 400px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .np-top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Center Vinyl Turntable Display */
+    .np-vinyl-center-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      min-height: 0;
+      height: calc(100vh - 180px);
+      overflow: hidden;
+      padding: 12px 0;
+      gap: 24px;
+    }
+
+    .np-turntable-platter {
+      position: relative;
+      width: 440px;
+      height: 440px;
+      max-width: 52vh;
+      max-height: 52vh;
+      aspect-ratio: 1/1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle, #1a1e27 0%, #0d1017 65%, #090b10 100%);
+      border-radius: 50%;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.94), 0 0 0 8px rgba(30, 36, 48, 0.55), 0 0 0 10px rgba(255, 255, 255, 0.05);
+    }
+
+    /* Tonearm */
+    .np-tonearm {
+      position: absolute;
+      top: -24px;
+      right: -32px;
+      width: 110px;
+      height: 290px;
+      z-index: 15;
+      pointer-events: none;
+      transform-origin: 32px 32px;
+      transform: rotate(0deg);
+      transition: transform 1.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    .np-tonearm.playing {
+      transform: rotate(26deg);
+    }
+    .np-tonearm.paused {
+      transform: rotate(0deg);
+    }
+    .np-arm-pivot {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #f1f5f9 0%, #64748b 60%, #334155 100%);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.7), inset 0 1px 3px rgba(255,255,255,0.8);
+      border: 2px solid #475569;
+    }
+    .np-arm-rod {
+      position: absolute;
+      top: 32px;
+      left: 30px;
+      width: 5px;
+      height: 235px;
+      background: linear-gradient(to right, #94a3b8, #f8fafc, #64748b);
+      border-radius: 3px;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+      transform: rotate(4deg);
+      transform-origin: top center;
+    }
+    .np-arm-head {
+      position: absolute;
+      bottom: 24px;
+      left: 34px;
+      width: 18px;
+      height: 36px;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border-radius: 3px;
+      border: 1px solid #64748b;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.65);
+      transform: rotate(-18deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .np-arm-needle-light {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #a855f7;
+      box-shadow: 0 0 10px #a855f7, 0 0 16px #c084fc;
+    }
+
+    /* Rotating Vinyl Disc */
+    .np-vinyl-disc {
+      width: 94%;
+      height: 94%;
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(
+        circle,
+        #11151e 0%,
+        #0b0d13 28%,
+        #1c212c 29%,
+        #0c0e14 30%,
+        #171c26 48%,
+        #0a0c12 49%,
+        #212836 67%,
+        #0c0f16 68%,
+        #191f2c 85%,
+        #080a0e 86%,
+        #050609 100%
+      );
+      box-shadow: 0 16px 45px rgba(0, 0, 0, 0.92), inset 0 0 30px rgba(0, 0, 0, 0.95);
+      transition: transform 0.3s ease;
+    }
+    @keyframes spinVinyl {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .np-vinyl-disc.playing {
+      animation: spinVinyl 20s linear infinite;
+    }
+    .np-vinyl-disc.paused {
+      animation: spinVinyl 20s linear infinite;
+      animation-play-state: paused !important;
+    }
+
+    /* Conic Glare Reflection */
+    .np-vinyl-shine {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 30deg,
+        rgba(255, 255, 255, 0.12) 0deg,
+        transparent 55deg,
+        rgba(255, 255, 255, 0.14) 125deg,
+        transparent 185deg,
+        rgba(255, 255, 255, 0.12) 240deg,
+        transparent 295deg,
+        rgba(255, 255, 255, 0.14) 360deg
+      );
+      pointer-events: none;
+    }
+
+    /* Center Label (Album Art) */
+    .np-vinyl-center-label {
+      width: 38%;
+      height: 38%;
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #181d26;
+      border: 5px solid #141822;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.85), inset 0 0 12px rgba(0, 0, 0, 0.6);
+      z-index: 3;
+    }
+    #np-vinyl-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    .np-vinyl-fallback {
+      font-size: 2.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .np-vinyl-hole {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #f1f5f9 0%, #64748b 60%, #1e293b 100%);
+      border: 2px solid #0f172a;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+      z-index: 5;
+    }
+
+    /* Track Details under vinyl */
+    .np-track-details {
+      text-align: center;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .np-track-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+      white-space: normal;
+      word-break: break-word;
+    }
+    .np-track-artist {
+      font-size: 1.15rem;
+      font-weight: 500;
+      color: #cbd5e1;
+    }
+    .np-badges-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .np-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+    }
+    .np-tag-format { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .np-tag-source { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .np-tag-offline { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+
+    /* Bottom Control Bar in Now Playing */
+    .np-player-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      flex-shrink: 0;
+      padding-top: 10px;
+    }
+    .np-progress-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    .np-progress-bar {
+      flex: 1;
+      height: 7px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      cursor: pointer;
+      position: relative;
+      transition: height 0.15s;
+    }
+    .np-progress-bar:hover {
+      height: 9px;
+    }
+    .np-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #9d4edd, #c084fc);
+      border-radius: 999px;
+      width: 0%;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.7);
+    }
+    .np-controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .np-volume-box {
+      width: 220px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+    .np-volume-box input[type=range] {
+      flex: 1;
+      accent-color: var(--accent-purple);
+      cursor: pointer;
+    }
+    .np-btns-center {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+    }
+    .np-ctrl-btn {
+      background: none;
+      border: none;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-size: 1.35rem;
+      transition: all 0.2s;
+    }
+    .np-ctrl-btn:hover {
+      color: #fff;
+      transform: scale(1.15);
+    }
+    .np-play-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.45rem;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(255, 255, 255, 0.35);
+      border: none;
+      transition: all 0.2s;
+    }
+    .np-play-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 24px rgba(255, 255, 255, 0.5);
+    }
+    .np-right-toggles {
+      width: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .np-signal-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #d8b4fe;
+      background: rgba(168, 85, 247, 0.16);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      padding: 5px 12px;
+      border-radius: 999px;
+      transition: all 0.2s;
+    }
+    .np-signal-label:hover {
+      background: rgba(168, 85, 247, 0.3);
+    }
+
+    @media (max-width: 680px) {
+      .np-turntable-platter {
+        width: 280px;
+        height: 280px;
+      }
+      .np-container {
+        padding: 12px 16px;
+      }
+      .np-track-title {
+        font-size: 1.4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Audio Element -->
+  <audio id="audio-engine" preload="auto"></audio>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">🎵</div>
+        <span>MyMusic Hi-Res</span>
+      </div>
+
+      <ul class="nav-list">
+        <li class="nav-item active" onclick="setTab('all')">🏠 Khám phá</li>
+        <li class="nav-item" onclick="setTab('local')">💾 Nhạc trên máy (Local)</li>
+        <li class="nav-item" onclick="openDriveModal()">☁️ Google Drive</li>
+        <li class="nav-item" onclick="openScanModal()">📁 Quét Thư Mục Máy</li>
+        <li class="nav-item" onclick="openCreateAlbumModal()">💿 Tạo Album Mới</li>
+        <li class="nav-item" onclick="openCoverModal(null)">🖼️ Quản Lý Ảnh Bìa</li>
+        <li class="nav-item" onclick="openOfflineModal()" style="color:#34d399;">💾 Nhạc Đã Lưu Offline</li>
+      </ul>
+
+      <div class="storage-status-card">
+        <span class="storage-badge">Zero-Disk Storage</span>
+        <div style="font-weight:700; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;">
+          <span>Bộ đệm RAM Xoay Vòng</span>
+          <span id="prefetch-indicator" style="display:none; font-size:0.65rem; color:#4ade80; background:rgba(74,222,128,0.15); border:1px solid rgba(74,222,128,0.3); border-radius:12px; padding:1px 6px;">⚡ Đã nạp trước</span>
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.75rem; line-height: 1.5;">
+          Đang nạp: <strong id="ram-usage" style="color:var(--accent-green)" data-cur-mb="0">0.0 MB</strong><br>
+          Ghi file tạm vào ổ cứng: <strong>0 MB (None)</strong><br>
+          Đã lưu Offline: <strong id="storage-offline-mb" style="color:#34d399">0.0 MB</strong>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-view">
+      <header class="top-header">
+        <div class="greeting">
+          <h1>Kho Nhạc Cá Nhân</h1>
+          <p id="sub-header-text">Thư viện hợp nhất Roon Style • Sẵn sàng phát Bit-Perfect qua Rust Engine</p>
+        </div>
+        <div class="sync-actions">
+          <button class="btn btn-secondary" onclick="openScanModal()">📂 Quét thư mục PC</button>
+          <button class="btn btn-secondary" onclick="openCreateAlbumModal()">💿 Tạo Album</button>
+          <button class="btn btn-primary" onclick="openDriveModal()">☁️ Đồng bộ Google Drive</button>
+          <button class="btn btn-secondary" onclick="openCoverModal(null)" style="color:#e0b0ff; border-color:rgba(157,78,221,0.4); background:rgba(157,78,221,0.1);" title="Đổi và đồng bộ ảnh bìa cho album hoặc bài hát">🖼️ Đổi bìa</button>
+          <button class="btn btn-secondary" onclick="openOfflineModal()" style="color:#34d399; border-color:rgba(16,185,129,0.35); background:rgba(16,185,129,0.08);" title="Quản lý và tải nhạc offline">💾 Nhạc Offline</button>
+          <button class="btn btn-secondary" onclick="openManageDeleteModal()" style="color:#f87171; border-color:rgba(239,68,68,0.35); background:rgba(239,68,68,0.08);" title="Quản lý và xóa bài hát khỏi thư viện">🗑️ Xóa / Quản lý</button>
+        </div>
+      </header>
+
+      <div class="filter-bar" id="main-filter-bar">
+        <div class="chip active" onclick="filterTracks('all', this)">Tất cả (<span id="count-all">0</span>)</div>
+        <div class="chip" onclick="filterTracks('local', this)">💾 Cục bộ (Local)</div>
+        <div class="chip" onclick="filterTracks('cloud', this)">☁️ Google Drive</div>
+        <div class="chip" onclick="filterTracks('offline', this)">💾 Đã tải Offline (<span id="count-offline">0</span>)</div>
+        <div class="chip" onclick="filterTracks('hires', this)">🟡 Hi-Res 24-bit</div>
+        <div class="chip" onclick="filterTracks('lossless', this)">🟢 FLAC Lossless</div>
+        <div class="chip" onclick="toggleAlbumFilter(this)">💿 Theo Album</div>
+      </div>
+      <div class="filter-bar" id="album-sub-bar" style="display:none; margin-top:-8px; padding-bottom:8px;"></div>
+
+      <div class="table-container">
+        <table class="track-table">
+          <thead>
+            <tr>
+              <th style="width: 50px;">#</th>
+              <th>Tên Bài Hát</th>
+              <th>Nghệ Sĩ</th>
+              <th>Album</th>
+              <th>Định Dạng</th>
+              <th>Nguồn</th>
+              <th style="text-align: right;">Thời lượng</th>
+              <th style="width: 44px; text-align: center;"></th>
+            </tr>
+          </thead>
+          <tbody id="track-rows"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <footer class="player-bar">
+    <div class="player-track-info">
+      <div class="album-art-thumb" id="bar-cover-box" onclick="if (currentPlayingId) openCoverModal(currentPlayingId);" style="cursor:pointer;" title="Click để đổi ảnh bìa bài đang phát">
+        <img id="bar-cover-img" src="" alt="" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:6px;" onerror="this.style.display='none'; document.getElementById('bar-cover-fallback').style.display='block';" />
+        <span id="bar-cover-fallback">💿</span>
+      </div>
+      <div class="track-meta">
+        <h4 id="bar-title">Chưa phát bài nào</h4>
+        <p id="bar-artist">Chọn một bài hát để bắt đầu</p>
+      </div>
+    </div>
+
+    <div class="player-controls">
+      <div class="control-buttons">
+        <button class="ctrl-btn" onclick="prevTrack()">⏮</button>
+        <button class="play-btn" id="play-pause-btn" onclick="togglePlay()">▶</button>
+        <button class="ctrl-btn" onclick="nextTrack()">⏭</button>
+      </div>
+      <div class="progress-row">
+        <span id="curr-time">0:00</span>
+        <div class="progress-bar" onclick="seek(event)">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <span id="total-time">0:00</span>
+      </div>
+    </div>
+
+    <div class="player-right-panel">
+      <button class="now-playing-trigger-btn" onclick="openNowPlaying()" title="Trình phát toàn màn hình: Đĩa than đang quay">
+        💿 Đĩa than (Now Playing) ⤢
+      </button>
+      <div class="signal-path-pill" onclick="toggleSignalModal(true)">
+        <span class="dot"></span>
+        <span id="signal-badge-text">Signal Path: Bit-Perfect</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Now Playing Immersive View (Vinyl Turntable) -->
+  <div id="now-playing-overlay" class="np-overlay">
+    <!-- Blurred Backdrop -->
+    <div class="np-backdrop">
+      <img id="np-backdrop-img" src="" alt="" />
+      <div class="np-backdrop-gradient"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="np-container">
+      <!-- Top Navigation -->
+      <div class="np-topbar">
+        <button class="np-btn" onclick="closeNowPlaying()" title="Thu nhỏ về danh sách (Phím Esc)">
+          <span style="font-size:1.1rem; line-height:1;">⌄</span>
+          <span>Thu nhỏ</span>
+        </button>
+
+        <div class="np-top-info">
+          <span class="np-mode-badge">HI-RES BIT-PERFECT</span>
+          <span id="np-top-title" class="np-top-title">Đang phát nhạc</span>
+        </div>
+
+        <div class="np-top-actions">
+          <button class="np-btn" id="np-offline-btn" onclick="toggleCurrentOffline()" title="Tải hoặc xem trạng thái offline">
+            💾 Offline
+          </button>
+          <button class="np-btn" onclick="if (currentPlayingId) openCoverModal(currentPlayingId);" title="Đổi ảnh bìa">
+            🖼 Đổi bìa
+          </button>
+          <button class="np-btn" onclick="toggleNpFullscreen()" title="Bật/tắt toàn màn hình">
+            ⛶ Toàn màn hình
+          </button>
+          <button class="np-btn" onclick="closeNowPlaying()" style="padding: 7px 12px; font-weight:800;" title="Đóng">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Center Main Area: Pure Focused Vinyl Turntable Platter -->
+      <div class="np-vinyl-center-container">
+        <div class="np-turntable-platter">
+          <!-- Vinyl Tonearm -->
+          <div class="np-tonearm paused" id="np-tonearm">
+            <div class="np-arm-pivot"></div>
+            <div class="np-arm-rod"></div>
+            <div class="np-arm-head">
+              <div class="np-arm-needle-light"></div>
+            </div>
+          </div>
+
+          <!-- Vinyl Record -->
+          <div class="np-vinyl-disc paused" id="np-vinyl-disc">
+            <div class="np-vinyl-shine"></div>
+            <div class="np-vinyl-center-label">
+              <img id="np-vinyl-cover" src="" alt="" style="display:none;" />
+              <div id="np-vinyl-fallback" class="np-vinyl-fallback">💿</div>
+              <div class="np-vinyl-hole"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="np-track-details">
+          <h2 id="np-track-title" class="np-track-title">Chưa chọn bài hát</h2>
+          <p id="np-track-artist" class="np-track-artist">Chọn một bài hát để bắt đầu</p>
+          <div class="np-badges-row">
+            <span class="np-tag np-tag-format" id="np-format-tag">FLAC Lossless</span>
+            <span class="np-tag np-tag-source" id="np-source-tag">⚡ Zero-Disk RAM Ready</span>
+            <span class="np-tag np-tag-offline" id="np-offline-tag" style="display:none;">💾 Đã lưu Offline</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Audio Controls in Now Playing -->
+      <div class="np-player-controls">
+        <div class="np-progress-row">
+          <span id="np-curr-time">0:00</span>
+          <div class="np-progress-bar" onclick="seek(event)">
+            <div class="np-progress-fill" id="np-progress-fill"></div>
+          </div>
+          <span id="np-total-time">0:00</span>
+        </div>
+
+        <div class="np-controls-row">
+          <div class="np-volume-box">
+            <span>🔊</span>
+            <input type="range" id="np-volume-slider" min="0" max="1" step="0.01" value="1" oninput="setNpVolume(this.value)" />
+          </div>
+
+          <div class="np-btns-center">
+            <button class="np-ctrl-btn" onclick="prevTrack()" title="Bài trước">⏮</button>
+            <button class="np-play-btn" id="np-play-btn" onclick="togglePlay()" title="Phát / Tạm dừng">▶</button>
+            <button class="np-ctrl-btn" onclick="nextTrack()" title="Bài kế tiếp">⏭</button>
+          </div>
+
+          <div class="np-right-toggles">
+            <span class="np-signal-label" onclick="toggleSignalModal(true)" style="cursor:pointer;" title="Xem đường dẫn âm thanh Bit-Perfect">
+              🟣 Bit-Perfect WASAPI
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Album Modal -->
+  <div class="modal-overlay" id="album-modal" onclick="closeCreateAlbumModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3>💿 Tạo Album / Danh Sách Mới</h3>
+        <button class="ctrl-btn" onclick="closeCreateAlbumModal()" style="font-size:1.4rem;">&times;</button>
+      </div>
+
+      <form onsubmit="handleCreateAlbum(event)">
+        <div class="form-group">
+          <label for="album-name-input">Tên Album:</label>
+          <input 
+            type="text" 
+            id="album-name-input" 
+            class="form-input" 
+            placeholder="Ví dụ: Tuyển Tập Nhạc Đêm, Lossless Tuyệt Phẩm..." 
+            required 
+          />
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <label style="margin:0;">Chọn các bài hát đưa vào Album:</label>
+            <button type="button" class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="selectAllAlbumTracks()">Chọn tất cả</button>
+          </div>
+          <div id="album-track-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 8px;">
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeCreateAlbumModal()">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-album">Lưu Album Ngay</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scan Local Folder Modal -->
+  <div class="modal-overlay" id="scan-modal" onclick="closeScanModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3>📂 Quét Thư Mục Nhạc Trên Máy</h3>
+        <button class="ctrl-btn" onclick="closeScanModal()" style="font-size:1.4rem;">&times;</button>
+      </div>
+
+      <!-- 1-Click Folder Picker via browser with Auto-Resolve & Save -->
+      <div style="background: rgba(157, 78, 221, 0.1); border: 1px dashed var(--accent-purple); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 2rem; margin-bottom: 6px;">📁</div>
+        <h4 style="margin-bottom: 4px; font-weight: 700;">Chọn Thư Mục Bằng Chuột</h4>
+        <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 14px;">Bấm nút dưới để click chọn thư mục nhạc, app sẽ tự động nhận diện và lưu vĩnh viễn!</p>
+        <input type="file" id="browser-folder-picker" webkitdirectory directory multiple style="display:none;" onchange="handleBrowserFolder(this.files)" />
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('browser-folder-picker').click()" style="padding: 10px 24px; font-size: 0.95rem; font-weight:700;">
+          🖱️ Click chọn thư mục ngay...
+        </button>
+      </div>
+
+      <!-- Quick 1-Click Albums from Computer -->
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label style="font-weight:700; margin-bottom: 8px; display:block;">💿 Album phát hiện trên máy tính của bạn (1-Click quét & lưu):</label>
+        <div id="quick-albums-list" style="display:flex; flex-wrap:wrap; gap:8px; max-height:160px; overflow-y:auto; padding:8px; background:rgba(0,0,0,0.2); border-radius:8px; border:1px solid var(--border);">
+          <div style="color:var(--text-muted); font-size:0.8rem;">Đang tải danh sách album máy tính...</div>
+        </div>
+      </div>
+
+      <!-- Manual input fallback -->
+      <div class="form-group">
+        <label for="manual-folder-input">Hoặc nhập đường dẫn thư mục tùy ý:</label>
+        <div style="display:flex; gap:10px;">
+          <input 
+            type="text" 
+            id="manual-folder-input" 
+            class="form-input" 
+            placeholder="Ví dụ: C:\Users\travi\Music\e-onkyo music\HVL" 
+            value="C:\Users\travi\Music\e-onkyo music\HVL"
+          />
+          <button type="button" class="btn btn-secondary" onclick="handleManualFolderScan()" style="white-space:nowrap;">Quét đường dẫn</button>
+        </div>
+        <div class="input-hint">💡 Quét sẽ tự động lưu bài hát vào library.json vĩnh viễn.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Drive Sync Modal -->
+  <div class="modal-overlay" id="drive-modal" onclick="closeDriveModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3>☁️ Đồng Bộ Thư Mục Google Drive</h3>
+        <button class="ctrl-btn" onclick="closeDriveModal()" style="font-size:1.4rem;">&times;</button>
+      </div>
+
+      <form onsubmit="handleDriveSync(event)">
+        <div class="form-group">
+          <label for="drive-url">Link Thư Mục / File Google Drive:</label>
+          <input 
+            type="text" 
+            id="drive-url" 
+            class="form-input" 
+            value="https://drive.google.com/drive/folders/130hLDc5Yl1A-HpERVmoq1ZZyo8-Fk7hg?usp=sharing"
+            required 
+          />
+          <div class="input-hint">
+            💡 Dán link thư mục hoặc file Google Drive công khai (chia sẻ quyền xem).
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label for="drive-folder-name" style="margin-bottom:0;">Tên Thư Mục / Album (Tùy chọn):</label>
+            <button type="button" class="btn btn-secondary" onclick="addCurrentDriveBookmark()" style="font-size:0.78rem; padding:3px 10px; color:#c084fc; border-color:rgba(157,78,221,0.4); background:rgba(157,78,221,0.1); display:flex; align-items:center; gap:5px;" title="Lưu link và tên album hiện tại vào danh sách tiện trích xuất sau này">
+              <span style="font-size:1.1rem; line-height:1; font-weight:bold;">➕</span> Lưu link này
+            </button>
+          </div>
+          <input 
+            type="text" 
+            id="drive-folder-name" 
+            class="form-input" 
+            placeholder="Ví dụ: Album HVL (RPT MCK)" 
+          />
+        </div>
+
+        <!-- Saved Links / Bookmarks Section -->
+        <div style="margin-top: 14px; margin-bottom: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <label style="font-size:0.85rem; font-weight:700; color:#e0b0ff; display:flex; align-items:center; gap:6px;">
+              <span>📌</span> Kho Link Đã Lưu (<span id="bm-count">0</span>):
+            </label>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Click vào link để nạp hoặc đồng bộ nhanh</span>
+          </div>
+
+          <div id="drive-bookmarks-list" style="max-height: 160px; overflow-y: auto; display:flex; flex-direction:column; gap:6px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeDriveModal()">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="btn-sync-submit">Đồng bộ ngay</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Manage / Delete Library Modal -->
+  <div class="modal-overlay" id="delete-modal" onclick="closeManageDeleteModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 620px;">
+      <div class="modal-header">
+        <h3 style="display:flex; align-items:center; gap:8px;">
+          <span>🗑️</span> Quản Lý & Xóa Thư Viện
+        </h3>
+        <button class="ctrl-btn" onclick="closeManageDeleteModal()" style="font-size:1.4rem;">&times;</button>
+      </div>
+
+      <!-- Danger Zone: Delete All -->
+      <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; padding: 14px; margin-bottom: 18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="font-weight: 700; color: #f87171; font-size: 0.95rem;">⚠️ Thao tác nhanh toàn bộ:</div>
+            <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 2px;">
+              Làm sạch hoàn toàn danh sách trong file library.json.
+            </div>
+          </div>
+          <button type="button" class="btn" onclick="handleDeleteAll()" style="background:#dc2626; color:white; font-weight:700; border:none; padding:8px 14px; font-size:0.85rem; border-radius:6px; cursor:pointer;">
+            🔥 Xóa TOÀN BỘ (<span id="del-total-all-count">0</span> bài)
+          </button>
+        </div>
+      </div>
+
+      <!-- Select Specific Tracks to Delete -->
+      <div class="form-group" style="margin-bottom: 10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <label style="font-weight: 600; font-size: 0.9rem;">Hoặc chọn từng bài muốn xóa:</label>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            Đã chọn: <strong id="del-checked-count" style="color: #f87171;">0</strong> / <span id="del-list-total">0</span> bài
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+          <input 
+            type="text" 
+            id="del-search-input" 
+            class="form-input" 
+            placeholder="🔍 Tìm nhanh bài hát / nghệ sĩ..." 
+            oninput="filterDeleteList()"
+            style="padding:6px 12px; font-size:0.85rem;"
+          />
+          <button type="button" class="btn btn-secondary" onclick="toggleSelectAllDelete()" style="white-space:nowrap; font-size:0.85rem; padding:6px 12px;">
+            Chọn tất cả
+          </button>
+        </div>
+
+        <div id="delete-track-list" style="max-height: 280px; overflow-y: auto; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; padding: 6px;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeManageDeleteModal()">Đóng</button>
+        <button type="button" class="btn" id="btn-delete-selected" onclick="handleDeleteSelected()" style="background:rgba(239,68,68,0.85); color:white; font-weight:700; border:none; padding:9px 18px; border-radius:6px; cursor:pointer;" disabled>
+          🗑️ Xóa <span id="btn-del-num">0</span> bài đã chọn
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage & Change Cover Modal -->
+  <div class="modal-overlay" id="cover-modal" onclick="closeCoverModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 style="display:flex; align-items:center; gap:8px;">
+          <span>🖼️</span> Quản Lý & Đổi Ảnh Bìa
+        </h3>
+        <button class="ctrl-btn" onclick="closeCoverModal()" style="font-size:1.4rem;">&times;</button>
+      </div>
+
+      <!-- Selected target info banner -->
+      <div style="background: rgba(157, 78, 221, 0.1); border: 1px solid rgba(157, 78, 221, 0.25); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display:flex; align-items:center; gap:16px;">
+        <div id="modal-cover-preview-box" style="width:72px; height:72px; min-width:72px; border-radius:8px; background:#1c2128; display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:2rem; border:1px solid rgba(255,255,255,0.15); box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+          <img id="modal-cover-preview-img" src="" style="width:100%; height:100%; object-fit:cover; display:none;" onerror="this.style.display='none'; document.getElementById('modal-cover-preview-fallback').style.display='block';" />
+          <span id="modal-cover-preview-fallback">💿</span>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <h4 id="modal-cover-track-title" style="font-size:1rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Tên bài hát</h4>
+          <p id="modal-cover-track-sub" style="font-size:0.82rem; color:var(--text-muted); margin-top:2px;">Nghệ sĩ • Album</p>
+          <div id="modal-cover-source-tag" style="margin-top:6px; font-size:0.75rem; color:#c084fc;">Trạng thái: Bìa hiện tại</div>
+        </div>
+      </div>
+
+      <!-- Scope selection -->
+      <div style="margin-bottom: 16px;">
+        <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:8px; color:var(--text-main);">
+          🎯 Phạm vi áp dụng ảnh bìa:
+        </label>
+        <div style="display:grid; grid-template-columns: 1fr; gap:8px;">
+          <label style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:6px; padding:8px 12px; cursor:pointer;">
+            <input type="radio" name="cover-scope" value="track" checked style="accent-color:var(--accent-purple);" />
+            <span style="font-size:0.88rem;">Chỉ áp dụng cho <strong>bài hát này</strong></span>
+          </label>
+          <label id="scope-album-label" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:6px; padding:8px 12px; cursor:pointer;">
+            <input type="radio" name="cover-scope" value="album" style="accent-color:var(--accent-purple);" />
+            <span style="font-size:0.88rem;">Áp dụng cho <strong>tất cả bài trong Album:</strong> <span id="scope-album-name" style="color:var(--accent-purple); font-weight:700;">HVL</span></span>
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:6px; padding:8px 12px; cursor:pointer;">
+            <input type="radio" name="cover-scope" value="all" style="accent-color:var(--accent-purple);" />
+            <span style="font-size:0.88rem;">Áp dụng cho <strong>TOÀN BỘ thư viện</strong> (<span id="scope-all-count">0</span> bài)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Tabs for Image Source -->
+      <div style="display:flex; gap:6px; border-bottom:1px solid var(--border); margin-bottom:14px;">
+        <button type="button" class="tab-btn active" id="tab-btn-file" onclick="setCoverTab('file')">📁 Chọn ảnh từ máy</button>
+        <button type="button" class="tab-btn" id="tab-btn-url" onclick="setCoverTab('url')">🔗 Dán link ảnh</button>
+        <button type="button" class="tab-btn" id="tab-btn-copy" onclick="setCoverTab('copy')">🎵 Lấy bìa từ bài khác</button>
+        <button type="button" class="tab-btn" id="tab-btn-remove" onclick="setCoverTab('remove')" style="color:#f87171;">💿 Gỡ bìa (Đĩa than)</button>
+      </div>
+
+      <!-- Tab Content: File Upload -->
+      <div id="tab-panel-file" class="cover-panel">
+        <label for="cover-file-input" style="border:2px dashed rgba(157,78,221,0.4); border-radius:8px; padding:20px; text-align:center; display:block; cursor:pointer; background:rgba(157,78,221,0.04); transition:background 0.2s;" ondragover="event.preventDefault(); this.style.background='rgba(157,78,221,0.1)';" ondragleave="this.style.background='rgba(157,78,221,0.04)';" ondrop="handleCoverDrop(event)">
+          <div style="font-size:2rem; margin-bottom:6px;">🖼️</div>
+          <div style="font-size:0.9rem; font-weight:600; color:#e0b0ff;">Nhấn để chọn file ảnh hoặc kéo thả vào đây</div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Hỗ trợ định dạng JPG, PNG, WEBP (Khuyên dùng hình vuông)</div>
+          <input type="file" id="cover-file-input" accept="image/*" style="display:none;" onchange="handleCoverFileSelected(this)" />
+        </label>
+      </div>
+
+      <!-- Tab Content: URL Input -->
+      <div id="tab-panel-url" class="cover-panel" style="display:none;">
+        <div class="form-group" style="margin-bottom:8px;">
+          <label style="font-size:0.85rem; color:var(--text-muted); margin-bottom:6px; display:block;">Dán liên kết ảnh bìa từ Google / Spotify / Apple Music:</label>
+          <div style="display:flex; gap:8px;">
+            <input type="url" id="cover-url-input" class="form-input" placeholder="https://example.com/cover.jpg" style="flex:1;" />
+            <button type="button" class="btn btn-secondary" onclick="previewUrlCover()">Xem thử</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Copy from another track -->
+      <div id="tab-panel-copy" class="cover-panel" style="display:none;">
+        <div class="form-group" style="margin-bottom:8px;">
+          <label style="font-size:0.85rem; color:var(--text-muted); margin-bottom:6px; display:block;">Chọn bài hát mẫu đang có ảnh bìa chuẩn trong thư viện:</label>
+          <select id="cover-copy-select" class="form-input" style="width:100%; padding:8px 12px;" onchange="previewCopyCover(this.value)">
+          </select>
+        </div>
+      </div>
+
+      <!-- Tab Content: Remove / Clear Cover -->
+      <div id="tab-panel-remove" class="cover-panel" style="display:none;">
+        <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:12px; font-size:0.85rem; color:#fca5a5; line-height:1.5;">
+          💿 Gỡ bỏ ảnh bìa của các bài hát được chọn.<br>
+          Hệ thống sẽ không đọc ảnh nhúng rác nữa mà quay về biểu tượng <strong>Đĩa than Hi-Res 💿</strong> mặc định, sạch sẽ và đồng bộ.
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeCoverModal()">Hủy</button>
+        <button type="button" class="btn btn-primary" id="btn-save-cover" onclick="handleSaveCover()">💾 Cập nhật bìa ngay</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Offline Manager Modal -->
+  <div class="modal-overlay" id="offline-modal" onclick="closeOfflineModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 style="display:flex; align-items:center; gap:8px;">
+          <span>💾</span> Quản Lý Nhạc Offline (Nghe Không Cần Mạng)
+        </h3>
+        <button class="ctrl-btn" onclick="closeOfflineModal()" style="font-size:1.4rem;">&times;</button>
+      </div>
+
+      <!-- Stats card -->
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-size:0.85rem; color:var(--text-muted);">Trạng thái bộ đệm Offline:</div>
+          <div style="font-size:1.2rem; font-weight:800; color:#34d399; margin-top:2px;">
+            <span id="modal-offline-count">0</span> / <span id="modal-offline-total">0</span> bài đã tải
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:0.85rem; color:var(--text-muted);">Dung lượng ổ cứng:</div>
+          <div style="font-size:1.2rem; font-weight:800; color:#fff; margin-top:2px;">
+            <span id="modal-offline-size">0.0</span> MB
+          </div>
+        </div>
+      </div>
+
+      <!-- Batch Actions -->
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 20px;">
+        <button type="button" class="btn btn-primary" id="btn-download-all" onclick="downloadAllTracks()" style="background:#059669; border-color:#10b981; justify-content:center; padding:12px; font-weight:700;">
+          ⬇️ Tải TOÀN BỘ thư viện về máy (Nghe không cần mạng)
+        </button>
+        <button type="button" class="btn btn-secondary" id="btn-download-album" onclick="downloadCurrentAlbumTracks()" style="justify-content:center; padding:10px; color:#e0b0ff; border-color:rgba(157,78,221,0.4);">
+          ⬇️ Tải tất cả bài thuộc Album đang chọn
+        </button>
+      </div>
+
+      <!-- Clear Offline Cache -->
+      <div style="border-top: 1px solid var(--border); padding-top: 14px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:600; font-size:0.88rem; color:#f87171;">Giải phóng bộ nhớ:</div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Xóa các file đã tải offline để giải phóng dung lượng ổ cứng.</div>
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="clearAllOfflineCache()" style="color:#f87171; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); padding:6px 12px; font-size:0.8rem;">
+          🗑️ Xóa file Offline
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Signal Path Modal -->
+  <div class="modal-overlay" id="signal-modal" onclick="toggleSignalModal(false)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Chuỗi Xử Lý Tín Hiệu (Signal Path)</h3>
+        <button class="ctrl-btn" onclick="toggleSignalModal(false)" style="font-size:1.4rem;">&times;</button>
+      </div>
+
+      <div class="path-step">
+        <div class="step-icon">1</div>
+        <div class="step-detail">
+          <h5>Nguồn phát âm thanh (Source)</h5>
+          <p id="sp-source">FLAC 24-bit / 96kHz Lossless</p>
+        </div>
+      </div>
+
+      <div class="path-step">
+        <div class="step-icon">2</div>
+        <div class="step-detail">
+          <h5>Bộ đệm Zero-Disk (Memory Ring Buffer)</h5>
+          <p>20MB RAM Buffer - 0 MB Temporary File on Disk</p>
+        </div>
+      </div>
+
+      <div class="path-step">
+        <div class="step-icon">3</div>
+        <div class="step-detail">
+          <h5>Giải mã lõi Rust (Native Audio Engine)</h5>
+          <p>Direct PCM Decoding (Zero Resampling)</p>
+        </div>
+      </div>
+
+      <div class="path-step">
+        <div class="step-icon">4</div>
+        <div class="step-detail">
+          <h5>Ngõ ra Âm thanh (Output Hardware)</h5>
+          <p id="sp-output" style="color: var(--accent-purple); font-weight:700;">WASAPI Exclusive (Bit-Perfect)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let tracks = [];
+    let currentFilter = 'all';
+    let currentPlayingId = null;
+    const audio = document.getElementById('audio-engine');
+    // Completely remove stale localStorage cover cache to eliminate cross-album contamination
+    try {
+      localStorage.removeItem('cover_cache');
+    } catch(e) {}
+    let coverCache = {}; // In-memory session cache only
+
+    async function loadArtworkForTrack(track) {
+      if (!track) return;
+      if (track.custom_cover === 'none') {
+        coverCache[track.id] = null;
+        hideArtwork(track.id);
+        return;
+      }
+      if (track.custom_cover && track.custom_cover.startsWith('/api/covers/')) {
+        const url = `${track.custom_cover}?t=${Date.now()}`;
+        coverCache[track.id] = url;
+        applyArtwork(track.id, url);
+        return;
+      }
+      if (track.custom_cover && track.custom_cover.startsWith('http')) {
+        coverCache[track.id] = track.custom_cover;
+        applyArtwork(track.id, track.custom_cover);
+        return;
+      }
+      if (coverCache[track.id] !== undefined) {
+        if (coverCache[track.id]) {
+          applyArtwork(track.id, coverCache[track.id]);
+        } else {
+          hideArtwork(track.id);
+        }
+        return;
+      }
+
+      // Check for embedded cover art from file
+      try {
+        const testRes = await fetch(`/api/cover/${track.id}`, { method: 'HEAD', cache: 'no-store' });
+        if (testRes.ok) {
+          const url = `/api/cover/${track.id}`;
+          coverCache[track.id] = url;
+          applyArtwork(track.id, url);
+        } else {
+          coverCache[track.id] = null; // Mark as no cover
+          hideArtwork(track.id);
+        }
+      } catch(e) {
+        coverCache[track.id] = null;
+        hideArtwork(track.id);
+      }
+    }
+
+    function hideArtwork(trackId) {
+      if (currentPlayingId === trackId) {
+        const barImg = document.getElementById('bar-cover-img');
+        const barFallback = document.getElementById('bar-cover-fallback');
+        if (barImg && barFallback) {
+          barImg.style.display = 'none';
+          barFallback.style.display = 'block';
+        }
+        const npBackdrop = document.getElementById('np-backdrop-img');
+        if (npBackdrop) {
+          npBackdrop.style.opacity = '0';
+          npBackdrop.src = '';
+        }
+        const npVinylCover = document.getElementById('np-vinyl-cover');
+        const npVinylFallback = document.getElementById('np-vinyl-fallback');
+        if (npVinylCover && npVinylFallback) {
+          npVinylCover.style.display = 'none';
+          npVinylFallback.style.display = 'flex';
+        }
+      }
+      const miniImg = document.getElementById(`mini-img-${trackId}`);
+      const miniFallback = document.getElementById(`mini-fallback-${trackId}`);
+      if (miniImg && miniFallback) {
+        miniImg.style.display = 'none';
+        miniFallback.style.display = 'block';
+      }
+    }
+
+    function applyArtwork(trackId, url) {
+      if (currentPlayingId === trackId) {
+        const barImg = document.getElementById('bar-cover-img');
+        const barFallback = document.getElementById('bar-cover-fallback');
+        if (barImg && barFallback) {
+          barImg.src = url;
+          barImg.style.display = 'block';
+          barFallback.style.display = 'none';
+        }
+        const npBackdrop = document.getElementById('np-backdrop-img');
+        if (npBackdrop) {
+          npBackdrop.src = url;
+          npBackdrop.style.opacity = '0.75';
+        }
+        const npVinylCover = document.getElementById('np-vinyl-cover');
+        const npVinylFallback = document.getElementById('np-vinyl-fallback');
+        if (npVinylCover && npVinylFallback) {
+          npVinylCover.src = url;
+          npVinylCover.style.display = 'block';
+          npVinylFallback.style.display = 'none';
+        }
+      }
+      const miniImg = document.getElementById(`mini-img-${trackId}`);
+      const miniFallback = document.getElementById(`mini-fallback-${trackId}`);
+      if (miniImg && miniFallback) {
+        miniImg.src = url;
+        miniImg.style.display = 'block';
+        miniFallback.style.display = 'none';
+      }
+    }
+
+    let isResolvingArt = false;
+    async function resolveArtwork() {
+      if (isResolvingArt) return;
+      isResolvingArt = true;
+      for (const t of tracks) {
+        if (!coverCache[t.id]) {
+          await loadArtworkForTrack(t);
+        } else {
+          applyArtwork(t.id, coverCache[t.id]);
+        }
+      }
+      isResolvingArt = false;
+    }
+
+    async function loadTracks() {
+      try {
+        const res = await fetch('/api/tracks');
+        tracks = await res.json();
+        coverCache = {}; // Reset session cover cache on track list refresh
+        // Auto sync if empty and not explicitly cleared by user
+        if (tracks.length === 0 && !localStorage.getItem('library_cleared')) {
+          await autoSyncInitialFolder();
+          return;
+        }
+        renderTracks();
+        resolveMissingDurations();
+        resolveArtwork();
+        updateOfflineInfo();
+      } catch (e) {
+        console.error("Load tracks err", e);
+      }
+    }
+
+    async function autoSyncInitialFolder() {
+      try {
+        const res = await fetch('/api/drive/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: "https://drive.google.com/drive/folders/1zwhdIU3fX8bQuAG44Mtegf43Keh0hFr0",
+            folder_name: "Nhac LossLess"
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const tRes = await fetch('/api/tracks');
+          tracks = await tRes.json();
+          renderTracks();
+          resolveMissingDurations();
+          resolveArtwork();
+        }
+      } catch (e) {}
+    }
+
+    function escapeJs(str) {
+      return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function renderTracks() {
+      const tbody = document.getElementById('track-rows');
+      tbody.innerHTML = '';
+
+      let filtered = tracks.filter(t => {
+        if (currentFilter === 'local') return t.source === 'LOCAL';
+        if (currentFilter === 'cloud') return t.source === 'GOOGLE_DRIVE';
+        if (currentFilter === 'offline') return !!t.offline_path;
+        if (currentFilter === 'hires') return t.bit_depth >= 24;
+        if (currentFilter === 'lossless') return t.format === 'FLAC';
+        if (currentFilter === 'album' && selectedAlbum) return t.album === selectedAlbum;
+        return true;
+      });
+
+      document.getElementById('count-all').innerText = tracks.length;
+      const offCount = tracks.filter(t => !!t.offline_path).length;
+      const offCountEl = document.getElementById('count-offline');
+      if (offCountEl) offCountEl.innerText = offCount;
+
+      filtered.forEach((t, i) => {
+        const isHires = t.bit_depth >= 24;
+        const isCurrent = t.id === currentPlayingId;
+        const isPrefetched = prefetchCache.has(t.id);
+        const tr = document.createElement('tr');
+        if (isCurrent) tr.className = 'active-row';
+        tr.onclick = () => play(t.id);
+        const cachedCover = coverCache[t.id];
+        tr.innerHTML = `
+          <td style="color: var(--text-muted);">${i + 1}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div class="mini-art" id="mini-box-${t.id}" onclick="event.stopPropagation(); openCoverModal(${t.id});" title="Click để đổi ảnh bìa bài này / Album" style="cursor:pointer; width:36px; height:36px; min-width:36px; border-radius:6px; background:#1c2128; display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:1.1rem; border:1px solid rgba(255,255,255,0.08); transition:transform 0.15s, border-color 0.15s;" onmouseenter="this.style.borderColor='var(--accent-purple)'; this.style.transform='scale(1.08)';" onmouseleave="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.transform='scale(1)';">
+                <img id="mini-img-${t.id}" src="${cachedCover || ''}" style="${cachedCover ? 'display:block;' : 'display:none;'} width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; document.getElementById('mini-fallback-${t.id}').style.display='block';" />
+                <span id="mini-fallback-${t.id}" style="${cachedCover ? 'display:none;' : 'display:block;'}">💿</span>
+              </div>
+              <div style="display:flex; align-items:center;">
+                <span style="font-weight: 700; color:${isCurrent ? 'var(--accent-purple)' : 'inherit'}">${t.title}</span>
+                ${isPrefetched ? '<span title="Đã nạp trước vào RAM (Gapless ready)" style="font-size:0.65rem; color:#4ade80; background:rgba(74,222,128,0.15); border:1px solid rgba(74,222,128,0.3); border-radius:10px; padding:1px 6px; margin-left:8px; font-weight:600; white-space:nowrap;">⚡ RAM Ready</span>' : ''}
+              </div>
+            </div>
+          </td>
+          <td>${t.artist}</td>
+          <td style="color: var(--text-muted);">${t.album}</td>
+          <td>
+            <span class="badge ${isHires ? 'badge-hires' : 'badge-lossless'}">
+              ${t.format} ${t.bit_depth}-bit/${t.sample_rate/1000}kHz
+            </span>
+          </td>
+          <td>
+            ${t.offline_path ? 
+              `<span class="badge" style="background:rgba(16,185,129,0.22); color:#34d399; border:1px solid rgba(16,185,129,0.4);" title="Đã lưu offline trên máy tính">💾 Offline</span>` :
+              `<span class="badge ${t.source === 'LOCAL' ? 'badge-local' : 'badge-cloud'}">${t.source === 'LOCAL' ? '💾 Local' : '☁️ Drive'}</span>`
+            }
+          </td>
+          <td id="duration-${t.id}" style="text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums;">${formatTime(t.duration_secs)}</td>
+          <td style="text-align: center; white-space:nowrap;">
+            ${t.offline_path ?
+              `<button onclick="event.stopPropagation(); deleteSingleOffline(${t.id}, '${escapeJs(t.title)}')" title="Đã lưu trên máy. Bấm để xóa bản offline" style="background:transparent; border:none; color:#34d399; cursor:pointer; font-size:0.85rem; padding:4px 6px; border-radius:4px;" onmouseenter="this.style.color='#f87171';" onmouseleave="this.style.color='#34d399';">💾</button>` :
+              `<button onclick="event.stopPropagation(); downloadSingleTrack(${t.id}, '${escapeJs(t.title)}')" title="Tải về máy để nghe offline không cần mạng" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:4px 6px; border-radius:4px; opacity:0.6; transition:all 0.2s;" onmouseenter="this.style.opacity='1'; this.style.color='#60a5fa';" onmouseleave="this.style.opacity='0.6'; this.style.color='var(--text-muted)';">⬇️</button>`
+            }
+            <button onclick="event.stopPropagation(); openCoverModal(${t.id})" title="Đổi ảnh bìa bài này / Album" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:4px 6px; border-radius:4px; opacity:0.6; transition:opacity 0.2s, color 0.2s;" onmouseenter="this.style.opacity='1'; this.style.color='#c084fc';" onmouseleave="this.style.opacity='0.6'; this.style.color='var(--text-muted)';">
+              🖼️
+            </button>
+            <button onclick="event.stopPropagation(); deleteSingleTrack(${t.id}, '${escapeJs(t.title)}')" title="Xóa bài này khỏi thư viện" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:4px 6px; border-radius:4px; opacity:0.6; transition:opacity 0.2s, color 0.2s;" onmouseenter="this.style.opacity='1'; this.style.color='#f87171';" onmouseleave="this.style.opacity='0.6'; this.style.color='var(--text-muted)';">
+              🗑️
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterTracks(filter, el) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-bar .chip').forEach(c => c.classList.remove('active'));
+      if (el) el.classList.add('active');
+      renderTracks();
+    }
+
+    let currentBlobUrl = null;
+    let playAbortController = null;
+    const prefetchCache = new Map(); // id -> { blobUrl, sizeMb }
+
+    function cleanupOldPrefetch(currentId) {
+      const currIdx = tracks.findIndex(t => t.id === currentId);
+      const keepIds = new Set();
+      if (currIdx >= 0) {
+        for (let i = currIdx - 1; i <= currIdx + 2; i++) {
+          if (tracks[i]) keepIds.add(tracks[i].id);
+        }
+      }
+      for (const [id, item] of prefetchCache.entries()) {
+        if (!keepIds.has(id)) {
+          if (item.blobUrl && item.blobUrl.startsWith('blob:') && item.blobUrl !== currentBlobUrl) {
+            URL.revokeObjectURL(item.blobUrl);
+          }
+          prefetchCache.delete(id);
+        }
+      }
+    }
+
+    async function triggerPrefetchNext(currentId) {
+      cleanupOldPrefetch(currentId);
+      const currIdx = tracks.findIndex(t => t.id === currentId);
+      if (currIdx < 0) return;
+
+      // Prefetch next 2 upcoming tracks in background
+      for (let offset = 1; offset <= 2; offset++) {
+        const nextIdx = currIdx + offset;
+        if (nextIdx >= tracks.length) break;
+        const nextT = tracks[nextIdx];
+        if (!nextT || prefetchCache.has(nextT.id)) continue;
+        if (nextT.source === 'LOCAL' && nextT.file_path && nextT.file_path.startsWith('blob:')) continue;
+
+        try {
+          console.log(`[Prefetch] Pre-buffering track #${nextT.id}: ${nextT.title}`);
+          const res = await fetch(`/api/stream/${nextT.id}`);
+          if (!res.ok) continue;
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const sizeMb = (blob.size / (1024 * 1024)).toFixed(1);
+          prefetchCache.set(nextT.id, { blobUrl, sizeMb });
+          console.log(`[Prefetch] RAM Ready: ${nextT.title} (${sizeMb} MB)`);
+          updatePrefetchUI();
+          renderTracks();
+        } catch (e) {
+          console.warn(`[Prefetch] Error for ${nextT.title}`, e);
+        }
+      }
+    }
+
+    function updatePrefetchUI() {
+      let totalPreloadMb = 0;
+      for (const item of prefetchCache.values()) {
+        totalPreloadMb += parseFloat(item.sizeMb) || 0;
+      }
+      const indicator = document.getElementById('prefetch-indicator');
+      if (indicator) {
+        if (prefetchCache.size > 0) {
+          indicator.style.display = 'inline-flex';
+          indicator.innerText = `⚡ Đã nạp trước ${prefetchCache.size} bài (${totalPreloadMb.toFixed(1)} MB)`;
+        } else {
+          indicator.style.display = 'none';
+        }
+      }
+      const ramEl = document.getElementById('ram-usage');
+      if (ramEl) {
+        const curMb = parseFloat(ramEl.getAttribute('data-cur-mb')) || 0;
+        if (curMb > 0) {
+          if (totalPreloadMb > 0) {
+            ramEl.innerText = `${curMb.toFixed(1)} MB (Đang phát) + ${totalPreloadMb.toFixed(1)} MB (Nạp trước)`;
+          } else {
+            ramEl.innerText = `${curMb.toFixed(1)} MB (Đang phát)`;
+          }
+        }
+      }
+    }
+
+    async function play(id) {
+      if (playAbortController) {
+        playAbortController.abort();
+      }
+      playAbortController = new AbortController();
+      const signal = playAbortController.signal;
+
+      currentPlayingId = id;
+      const track = tracks.find(t => t.id === id);
+      if (!track) return;
+
+      document.getElementById('bar-title').innerText = track.title;
+      document.getElementById('bar-artist').innerText = `${track.artist} • ${track.album}`;
+      document.getElementById('play-pause-btn').innerText = '⏳';
+      loadArtworkForTrack(track);
+
+      const is24 = track.bit_depth >= 24;
+      document.getElementById('signal-badge-text').innerText = is24 ? '🟣 Bit-Perfect' : '🟢 Direct PCM';
+      document.getElementById('sp-source').innerText = `${track.format} ${track.bit_depth}-bit / ${track.sample_rate/1000}kHz Lossless`;
+      document.getElementById('sp-output').innerText = is24 ? 'WASAPI Exclusive (Bit-Perfect)' : 'WASAPI Shared / Direct Out';
+      renderTracks();
+
+      // Update Now Playing screen
+      updateNowPlayingUI(track);
+
+      // Check if already prefetched in RAM
+      if (prefetchCache.has(id)) {
+        const cached = prefetchCache.get(id);
+        currentBlobUrl = cached.blobUrl;
+        audio.src = currentBlobUrl;
+        const mbSize = parseFloat(cached.sizeMb) || 0;
+        const ramEl = document.getElementById('ram-usage');
+        ramEl.setAttribute('data-cur-mb', mbSize);
+        ramEl.innerText = `${mbSize.toFixed(1)} MB (0ms Gapless Instant)`;
+        try {
+          await audio.play();
+          document.getElementById('play-pause-btn').innerText = '⏸';
+        } catch(e) {}
+        updatePrefetchUI();
+        triggerPrefetchNext(id);
+        return;
+      }
+
+      // Local blob files already in memory
+      if (track.source === 'LOCAL' && track.file_path && track.file_path.startsWith('blob:')) {
+        audio.src = track.file_path;
+        try {
+          await audio.play();
+          document.getElementById('play-pause-btn').innerText = '⏸';
+          document.getElementById('ram-usage').innerText = '12.0 MB';
+        } catch(e) {}
+        return;
+      }
+
+      // Zero-Disk RAM Ring Buffer: fetch stream into memory Blob
+      try {
+        document.getElementById('ram-usage').innerText = 'Đang nạp RAM...';
+        const res = await fetch(`/api/stream/${id}`, { signal });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const blob = await res.blob();
+        if (signal.aborted) return;
+
+        if (currentBlobUrl && currentBlobUrl.startsWith('blob:') && !Array.from(prefetchCache.values()).some(c => c.blobUrl === currentBlobUrl)) {
+          URL.revokeObjectURL(currentBlobUrl);
+        }
+        currentBlobUrl = URL.createObjectURL(blob);
+        audio.src = currentBlobUrl;
+
+        const mbSize = (blob.size / (1024 * 1024)).toFixed(1);
+        const ramEl = document.getElementById('ram-usage');
+        ramEl.setAttribute('data-cur-mb', mbSize);
+        ramEl.innerText = `${mbSize} MB`;
+
+        await audio.play();
+        document.getElementById('play-pause-btn').innerText = '⏸';
+        // Prefetch next track seamlessly in the background!
+        triggerPrefetchNext(id);
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error("RAM buffer play fallback", err);
+        audio.src = `/api/stream/${id}`;
+        try {
+          await audio.play();
+          document.getElementById('play-pause-btn').innerText = '⏸';
+        } catch(e) {
+          document.getElementById('play-pause-btn').innerText = '▶';
+        }
+      }
+    }
+
+    function togglePlay() {
+      if (!currentPlayingId && tracks.length > 0) {
+        play(tracks[0].id);
+        return;
+      }
+      if (audio.paused) {
+        audio.play().catch(()=>{});
+      } else {
+        audio.pause();
+      }
+    }
+
+    function prevTrack() {
+      const idx = tracks.findIndex(t => t.id === currentPlayingId);
+      if (idx > 0) play(tracks[idx - 1].id);
+    }
+
+    function nextTrack() {
+      const idx = tracks.findIndex(t => t.id === currentPlayingId);
+      if (idx >= 0 && idx < tracks.length - 1) play(tracks[idx + 1].id);
+    }
+
+    function seek(e) {
+      const bar = e.currentTarget;
+      const rect = bar.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, clickX / rect.width));
+      if (audio.duration) {
+        audio.currentTime = pct * audio.duration;
+      }
+    }
+
+    audio.onplay = () => {
+      document.getElementById('play-pause-btn').innerText = '⏸';
+      syncVinylAnimation(true);
+    };
+
+    audio.onpause = () => {
+      document.getElementById('play-pause-btn').innerText = '▶';
+      syncVinylAnimation(false);
+    };
+
+    audio.onloadedmetadata = () => {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        const secs = Math.round(audio.duration);
+        const timeFormatted = formatTime(secs);
+        document.getElementById('total-time').innerText = timeFormatted;
+        const npTotal = document.getElementById('np-total-time');
+        if (npTotal) npTotal.innerText = timeFormatted;
+
+        const t = tracks.find(x => x.id === currentPlayingId);
+        if (t) {
+          t.duration_secs = secs;
+          const cell = document.getElementById(`duration-${t.id}`);
+          if (cell) cell.innerText = timeFormatted;
+          fetch('/api/tracks/update_duration', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ id: t.id, duration_secs: secs })
+          }).catch(()=>{});
+        }
+      }
+    };
+
+    audio.ontimeupdate = () => {
+      if (audio.duration) {
+        const pct = (audio.currentTime / audio.duration) * 100;
+        document.getElementById('progress-fill').style.width = `${pct}%`;
+        const curStr = formatTime(Math.floor(audio.currentTime));
+        const totStr = formatTime(Math.floor(audio.duration));
+        document.getElementById('curr-time').innerText = curStr;
+        document.getElementById('total-time').innerText = totStr;
+
+        // Synchronize Now Playing Overlay
+        const npFill = document.getElementById('np-progress-fill');
+        if (npFill) npFill.style.width = `${pct}%`;
+        const npCurr = document.getElementById('np-curr-time');
+        if (npCurr) npCurr.innerText = curStr;
+        const npTotal = document.getElementById('np-total-time');
+        if (npTotal) npTotal.innerText = totStr;
+      }
+    };
+
+    audio.onended = () => {
+      nextTrack();
+    };
+
+    function formatTime(secs) {
+      if (!secs || isNaN(secs) || secs <= 0) return "--:--";
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    /* ========================================================
+       NOW PLAYING IMMERSIVE VIEW (VINYL TURNTABLE)
+       ======================================================== */
+    let isNowPlayingOpen = false;
+
+    function openNowPlaying() {
+      const overlay = document.getElementById('now-playing-overlay');
+      if (!overlay) return;
+      isNowPlayingOpen = true;
+      overlay.style.display = 'flex';
+      overlay.classList.add('active');
+
+      if (currentPlayingId) {
+        const t = tracks.find(x => x.id === currentPlayingId);
+        if (t) {
+          updateNowPlayingUI(t);
+        }
+      }
+    }
+
+    function closeNowPlaying() {
+      const overlay = document.getElementById('now-playing-overlay');
+      if (!overlay) return;
+      isNowPlayingOpen = false;
+      overlay.classList.remove('active');
+      setTimeout(() => {
+        if (!isNowPlayingOpen) overlay.style.display = 'none';
+      }, 300);
+    }
+
+    function toggleNpFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function setNpVolume(val) {
+      audio.volume = parseFloat(val);
+      const slider = document.getElementById('np-volume-slider');
+      if (slider) slider.value = val;
+    }
+
+    function updateNowPlayingUI(track) {
+      if (!track) return;
+      const npTitle = document.getElementById('np-track-title');
+      const npArtist = document.getElementById('np-track-artist');
+      const npTopTitle = document.getElementById('np-top-title');
+      if (npTitle) npTitle.innerText = track.title;
+      if (npArtist) npArtist.innerText = `${track.artist} • ${track.album}`;
+      if (npTopTitle) npTopTitle.innerText = `${track.title} - ${track.artist}`;
+
+      const formatTag = document.getElementById('np-format-tag');
+      if (formatTag) {
+        formatTag.innerText = `${track.format} ${track.bit_depth}-bit / ${(track.sample_rate / 1000).toFixed(0)}kHz`;
+      }
+
+      const offlineTag = document.getElementById('np-offline-tag');
+      const npOfflineBtn = document.getElementById('np-offline-btn');
+      if (track.offline_path) {
+        if (offlineTag) offlineTag.style.display = 'inline-block';
+        if (npOfflineBtn) npOfflineBtn.innerText = '💾 Đã lưu Offline';
+      } else {
+        if (offlineTag) offlineTag.style.display = 'none';
+        if (npOfflineBtn) npOfflineBtn.innerText = '⬇️ Tải Offline';
+      }
+
+      // Check Artwork for backdrop and vinyl center
+      const coverUrl = coverCache[track.id];
+      const npBackdrop = document.getElementById('np-backdrop-img');
+      const npVinylCover = document.getElementById('np-vinyl-cover');
+      const npVinylFallback = document.getElementById('np-vinyl-fallback');
+
+      if (coverUrl) {
+        if (npBackdrop) {
+          npBackdrop.src = coverUrl;
+          npBackdrop.style.opacity = '0.75';
+        }
+        if (npVinylCover) {
+          npVinylCover.src = coverUrl;
+          npVinylCover.style.display = 'block';
+        }
+        if (npVinylFallback) npVinylFallback.style.display = 'none';
+      } else {
+        if (npBackdrop) {
+          npBackdrop.style.opacity = '0';
+          npBackdrop.src = '';
+        }
+        if (npVinylCover) npVinylCover.style.display = 'none';
+        if (npVinylFallback) npVinylFallback.style.display = 'flex';
+      }
+
+      // Sync state with vinyl animation
+      syncVinylAnimation(!audio.paused);
+    }
+
+    function syncVinylAnimation(isPlaying) {
+      const disc = document.getElementById('np-vinyl-disc');
+      const arm = document.getElementById('np-tonearm');
+      const npPlayBtn = document.getElementById('np-play-btn');
+
+      if (isPlaying) {
+        if (disc) {
+          disc.classList.remove('paused');
+          disc.classList.add('playing');
+        }
+        if (arm) {
+          arm.classList.remove('paused');
+          arm.classList.add('playing');
+        }
+        if (npPlayBtn) npPlayBtn.innerText = '⏸';
+      } else {
+        if (disc) {
+          disc.classList.add('paused');
+        }
+        if (arm) {
+          arm.classList.remove('playing');
+          arm.classList.add('paused');
+        }
+        if (npPlayBtn) npPlayBtn.innerText = '▶';
+      }
+    }
+
+    async function toggleCurrentOffline() {
+      if (!currentPlayingId) return;
+      const t = tracks.find(x => x.id === currentPlayingId);
+      if (!t) return;
+      if (t.offline_path) {
+        if (confirm(`Bài "${t.title}" đã được tải offline. Bạn có muốn xóa để giải phóng dung lượng?`)) {
+          await deleteTrackOffline(t.id);
+          updateNowPlayingUI(t);
+        }
+      } else {
+        await downloadTrackOffline(t.id);
+        updateNowPlayingUI(t);
+      }
+    }
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (e.key === 'Escape') {
+        if (isNowPlayingOpen) closeNowPlaying();
+      } else if (e.key === 'l' || e.key === 'L') {
+        if (isNowPlayingOpen) closeNowPlaying();
+        else openNowPlaying();
+      }
+    });
+
+    let isResolving = false;
+    async function resolveMissingDurations() {
+      if (isResolving) return;
+      isResolving = true;
+      for (const t of tracks) {
+        if (!t.duration_secs || t.duration_secs === 0) {
+          try {
+            await new Promise((resolve) => {
+              const probe = new Audio();
+              probe.preload = "metadata";
+              probe.src = `/api/stream/${t.id}`;
+              const timeout = setTimeout(() => {
+                probe.src = "";
+                resolve();
+              }, 3000);
+              probe.onloadedmetadata = () => {
+                clearTimeout(timeout);
+                if (probe.duration && !isNaN(probe.duration) && isFinite(probe.duration)) {
+                  const secs = Math.round(probe.duration);
+                  t.duration_secs = secs;
+                  const cell = document.getElementById(`duration-${t.id}`);
+                  if (cell) cell.innerText = formatTime(secs);
+                  fetch('/api/tracks/update_duration', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: t.id, duration_secs: secs })
+                  }).catch(()=>{});
+                }
+                probe.src = "";
+                resolve();
+              };
+              probe.onerror = () => {
+                clearTimeout(timeout);
+                probe.src = "";
+                resolve();
+              };
+            });
+          } catch(e) {}
+        }
+      }
+      isResolving = false;
+    }
+
+    async function openScanModal() {
+      document.getElementById('scan-modal').style.display = 'flex';
+      loadQuickLocalAlbums();
+    }
+
+    function closeScanModal() {
+      document.getElementById('scan-modal').style.display = 'none';
+    }
+
+    async function loadQuickLocalAlbums() {
+      const container = document.getElementById('quick-albums-list');
+      try {
+        const res = await fetch('/api/local_folders');
+        const folders = await res.json();
+        container.innerHTML = '';
+        
+        // Add "All e-onkyo music" option
+        const allBtn = document.createElement('div');
+        allBtn.className = 'chip';
+        allBtn.style.cssText = 'cursor:pointer; font-size:0.8rem; padding:6px 12px; background:var(--accent-purple); color:#fff; font-weight:700;';
+        allBtn.innerHTML = '🌟 Quét Toàn Bộ Thư Mục e-onkyo';
+        allBtn.onclick = () => scanSpecificPath('C:\\Users\\travi\\Music\\e-onkyo music', 'Toàn Bộ e-onkyo');
+        container.appendChild(allBtn);
+
+        folders.forEach(f => {
+          const chip = document.createElement('div');
+          chip.className = 'chip';
+          chip.style.cssText = 'cursor:pointer; font-size:0.8rem; padding:6px 10px;';
+          chip.innerHTML = `💿 ${f.name}`;
+          chip.onclick = () => scanSpecificPath(f.path, f.name);
+          container.appendChild(chip);
+        });
+      } catch(e) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem;">Không thể nạp danh sách album.</div>';
+      }
+    }
+
+    async function scanSpecificPath(path, name) {
+      closeScanModal();
+      try {
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder: path })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`🎉 Đã quét xong Album "${name}"!\nĐã thêm: ${data.added} bài hát và LƯU VĨNH VIỄN vào library.json.`);
+          await loadTracks();
+          filterTracks('local');
+        } else {
+          alert('Không thể quét thư mục: ' + path);
+        }
+      } catch(e) {
+        alert('Lỗi kết nối máy chủ.');
+      }
+    }
+
+    async function handleBrowserFolder(files) {
+      if (!files || files.length === 0) return;
+      
+      const folderName = files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : "";
+      const sampleFile = files[0].name;
+
+      // 1. Auto-resolve real folder on computer so it saves permanently into library.json
+      try {
+        const res = await fetch('/api/scan/auto_resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder_name: folderName, sample_file: sampleFile })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeScanModal();
+          alert(`🎉 Đã nhận diện thư mục "${data.folder}" trên máy!\nĐã thêm ${data.added} bài hát và LƯU VĨNH VIỄN vào library.json.`);
+          await loadTracks();
+          filterTracks('local');
+          return;
+        }
+      } catch(e) {}
+
+      // 2. Fallback to in-browser blob stream
+      closeScanModal();
+      let added = 0;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'flac' || ext === 'mp3' || ext === 'wav' || ext === 'm4a') {
+          added++;
+          const { title, artist } = parseClientTags(file.name);
+          const isFlac = ext === 'flac';
+          const blobUrl = URL.createObjectURL(file);
+          tracks.push({
+            id: Date.now() + i,
+            title,
+            artist,
+            album: folderName || "Nhạc Máy Tính",
+            format: ext.toUpperCase(),
+            sample_rate: isFlac ? 96000 : 44100,
+            bit_depth: isFlac ? 24 : 16,
+            duration_secs: 0,
+            file_path: blobUrl,
+            source: "LOCAL"
+          });
+        }
+      }
+      if (added > 0) {
+        alert(`🎉 Đã thêm ${added} bài hát từ "${folderName}" vào danh sách phát!`);
+        renderTracks();
+        resolveMissingDurations();
+        resolveArtwork();
+        updateOfflineInfo();
+      }
+    }
+
+    function parseClientTags(filename) {
+      let clean = filename
+        .replace(/\.(flac|mp3|wav|m4a)$/i, '')
+        .replace(/ \(\d+\)$/g, '')
+        .replace(/_hq|_79db|_t3ay$/g, '');
+
+      // Check for underscore format like 13_RPT_MCK_Nếu_Như_Ta_Chẳng_Còn
+      if (!clean.includes('-') && clean.includes('_')) {
+        let uParts = clean.split('_');
+        if (/^\d+$/.test(uParts[0])) {
+          uParts.shift(); // remove track number e.g. 13
+        }
+        if (uParts.length >= 3 && uParts[0].toUpperCase() === 'RPT' && uParts[1].toUpperCase() === 'MCK') {
+          const artist = "RPT MCK";
+          const title = uParts.slice(2).join(' ');
+          return { title, artist };
+        } else if (uParts.length >= 2) {
+          const artist = uParts[0];
+          const title = uParts.slice(1).join(' ');
+          return { title, artist };
+        }
+      }
+
+      const parts = clean.split('-').map(s => s.trim());
+
+      if (parts.length >= 3) {
+        // Case 1: TrackNum - Artist - Title (e.g. "02 - RPT MCK - IDK")
+        if (/^\d+$/.test(parts[0])) {
+          const artist = parts[1];
+          const title = parts.slice(2).join(' - ');
+          return { title, artist };
+        }
+        // Case 2: Title - Artist - ID (e.g. "AnhKhongThaThu - DinhDung - 6684271")
+        if (/^\d+$/.test(parts[parts.length - 1])) {
+          const title = splitCamel(parts[0]);
+          const artist = splitCamel(parts[1]);
+          return { title, artist };
+        }
+        // Fallback: Artist - Title
+        return { title: parts.slice(1).join(' - '), artist: parts[0] };
+      } else if (parts.length === 2) {
+        // Case 3: TrackNum - Title (e.g. "02 - YeuDauTheoGioBay")
+        if (/^\d+$/.test(parts[0])) {
+          return { title: splitCamel(parts[1]), artist: "Tuyển Tập Tuyệt Phẩm" };
+        }
+        // Case 4: Artist - Title
+        return { title: splitCamel(parts[1]), artist: splitCamel(parts[0]) };
+      }
+
+      clean = clean.replace(/^[\d\.\-\s_]+/, '');
+      return { title: splitCamel(clean), artist: "Tuyển Tập Tuyệt Phẩm" };
+    }
+
+    function splitCamel(str) {
+      return str.replace(/([a-z\d])([A-Z])/g, '$1 $2').trim();
+    }
+
+    async function handleManualFolderScan() {
+      const folder = document.getElementById('manual-folder-input').value.trim();
+      if (!folder) {
+        alert('Vui lòng nhập đường dẫn thư mục!');
+        return;
+      }
+      try {
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`🎉 Đã quét xong thư mục:\n${data.scanned_folder}\nĐã thêm: ${data.added} bài hát vào thư viện!`);
+          closeScanModal();
+          await loadTracks();
+        } else {
+          alert('Không thể quét thư mục. Vui lòng kiểm tra lại đường dẫn!');
+        }
+      } catch (err) {
+        alert('Lỗi kết nối máy chủ khi quét thư mục.');
+      }
+    }
+
+    function openCreateAlbumModal() {
+      const list = document.getElementById('album-track-list');
+      list.innerHTML = '';
+      if (tracks.length === 0) {
+        list.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; text-align:center;">Chưa có bài hát nào trong thư viện.</p>';
+      } else {
+        tracks.forEach(t => {
+          const item = document.createElement('label');
+          item.style.cssText = 'display:flex; align-items:center; gap:10px; cursor:pointer; font-size:0.85rem; padding:4px 6px; border-radius:4px;';
+          item.innerHTML = `
+            <input type="checkbox" name="album-tracks" value="${t.id}" style="accent-color: var(--accent-purple);" />
+            <span style="font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.title}</span>
+            <span style="color:var(--text-muted); font-size:0.75rem;">${t.artist}</span>
+          `;
+          list.appendChild(item);
+        });
+      }
+      document.getElementById('album-modal').style.display = 'flex';
+      document.getElementById('album-name-input').focus();
+    }
+
+    function closeCreateAlbumModal() {
+      document.getElementById('album-modal').style.display = 'none';
+    }
+
+    function selectAllAlbumTracks() {
+      const boxes = document.querySelectorAll('input[name="album-tracks"]');
+      const allChecked = Array.from(boxes).every(b => b.checked);
+      boxes.forEach(b => b.checked = !allChecked);
+    }
+
+    async function handleCreateAlbum(e) {
+      e.preventDefault();
+      const name = document.getElementById('album-name-input').value.trim();
+      const checked = Array.from(document.querySelectorAll('input[name="album-tracks"]:checked')).map(b => parseInt(b.value));
+      if (!name) {
+        alert('Vui lòng nhập tên Album!');
+        return;
+      }
+      if (checked.length === 0) {
+        alert('Vui lòng chọn ít nhất 1 bài hát cho Album!');
+        return;
+      }
+
+      const btn = document.getElementById('btn-save-album');
+      btn.innerText = 'Đang lưu...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/albums/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name, track_ids: checked })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`🎉 Đã tạo Album "${name}" thành công với ${data.modified} bài hát!\nĐã tự động lưu vào library.json.`);
+          closeCreateAlbumModal();
+          await loadTracks();
+          renderAlbumSubBar();
+        } else {
+          alert('Lỗi tạo album: ' + (data.error || 'Thất bại'));
+        }
+      } catch (err) {
+        alert('Lỗi kết nối máy chủ khi tạo album.');
+      } finally {
+        btn.innerText = 'Lưu Album Ngay';
+        btn.disabled = false;
+      }
+    }
+
+    let selectedAlbum = null;
+    function toggleAlbumFilter(chipEl) {
+      const sub = document.getElementById('album-sub-bar');
+      if (sub.style.display === 'none') {
+        sub.style.display = 'flex';
+        renderAlbumSubBar();
+        document.querySelectorAll('#main-filter-bar .chip').forEach(c => c.classList.remove('active'));
+        chipEl.classList.add('active');
+      } else {
+        sub.style.display = 'none';
+        selectedAlbum = null;
+        filterTracks('all', document.querySelector('#main-filter-bar .chip'));
+      }
+    }
+
+    function renderAlbumSubBar() {
+      const sub = document.getElementById('album-sub-bar');
+      sub.innerHTML = '';
+      const albums = [...new Set(tracks.map(t => t.album).filter(Boolean))];
+      albums.forEach(alb => {
+        const count = tracks.filter(t => t.album === alb).length;
+        const pill = document.createElement('div');
+        pill.className = `chip ${selectedAlbum === alb ? 'active' : ''}`;
+        pill.innerText = `💿 ${alb} (${count})`;
+        pill.onclick = () => {
+          selectedAlbum = alb;
+          currentFilter = 'album';
+          renderAlbumSubBar();
+          renderTracks();
+        };
+        sub.appendChild(pill);
+      });
+    }
+
+    function scanFolderPrompt() {
+      openScanModal();
+    }
+
+    let driveBookmarks = [];
+
+    function openDriveModal() {
+      document.getElementById('drive-modal').style.display = 'flex';
+      loadDriveBookmarks();
+      document.getElementById('drive-url').focus();
+    }
+
+    function closeDriveModal() {
+      document.getElementById('drive-modal').style.display = 'none';
+    }
+
+    function renderDriveBookmarks() {
+      const container = document.getElementById('drive-bookmarks-list');
+      const countEl = document.getElementById('bm-count');
+      if (countEl) countEl.innerText = driveBookmarks.length;
+      if (!container) return;
+
+      if (driveBookmarks.length === 0) {
+        container.innerHTML = `
+          <div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:12px;">
+            Chưa có link nào được lưu. Nhập link và bấm nút <strong>[➕ Lưu link này]</strong> ở trên.
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      driveBookmarks.forEach(bm => {
+        const row = document.createElement('div');
+        row.style.cssText = `
+          display:flex; align-items:center; justify-content:space-between; gap:10px;
+          background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
+          border-radius:6px; padding:8px 10px; cursor:pointer; transition:background 0.15s, border-color 0.15s;
+        `;
+        row.onmouseenter = () => { row.style.background = 'rgba(157,78,221,0.12)'; row.style.borderColor = 'rgba(157,78,221,0.3)'; };
+        row.onmouseleave = () => { row.style.background = 'rgba(255,255,255,0.04)'; row.style.borderColor = 'rgba(255,255,255,0.06)'; };
+        row.onclick = () => selectDriveBookmark(bm);
+
+        row.innerHTML = `
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:0.85rem; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              📁 ${bm.title}
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">
+              🔗 ${bm.url}
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+            <button type="button" onclick="event.stopPropagation(); syncSpecificDriveBookmark('${escapeJs(bm.url)}', '${escapeJs(bm.title)}')" class="btn btn-primary" style="padding:4px 8px; font-size:0.75rem; white-space:nowrap;" title="Đồng bộ ngay album này">
+              ⚡ Đồng bộ
+            </button>
+            <button type="button" onclick="event.stopPropagation(); deleteDriveBookmark('${bm.id}')" title="Xóa link này khỏi danh sách lưu" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:4px;" onmouseenter="this.style.color='#f87171';" onmouseleave="this.style.color='var(--text-muted)';">
+              🗑️
+            </button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function selectDriveBookmark(bm) {
+      document.getElementById('drive-url').value = bm.url;
+      document.getElementById('drive-folder-name').value = bm.title;
+    }
+
+    async function addCurrentDriveBookmark() {
+      const url = document.getElementById('drive-url').value.trim();
+      let title = document.getElementById('drive-folder-name').value.trim();
+
+      if (!url) {
+        alert("Vui lòng nhập Link Google Drive cần lưu!");
+        document.getElementById('drive-url').focus();
+        return;
+      }
+
+      if (!title) {
+        title = prompt("Nhập tên / tiêu đề cho link này (ví dụ: Album HVL - RPT MCK):", "Kho Nhạc Drive");
+        if (!title) return;
+        document.getElementById('drive-folder-name').value = title;
+      }
+
+      try {
+        const res = await fetch('/api/drive/bookmarks/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, url })
+        });
+        const data = await res.json();
+        if (data.success) {
+          driveBookmarks = data.bookmarks;
+          renderDriveBookmarks();
+        }
+      } catch(e) {
+        alert("Lỗi lưu bookmark Drive");
+      }
+    }
+
+    async function deleteDriveBookmark(id) {
+      if (!confirm("Bạn có chắc muốn xóa link này khỏi danh sách đã lưu?")) return;
+      try {
+        const res = await fetch('/api/drive/bookmarks/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          driveBookmarks = data.bookmarks;
+          renderDriveBookmarks();
+        }
+      } catch(e) {
+        alert("Lỗi xóa bookmark");
+      }
+    }
+
+    async function syncSpecificDriveBookmark(url, title) {
+      document.getElementById('drive-url').value = url;
+      document.getElementById('drive-folder-name').value = title;
+      const fakeEvent = { preventDefault: () => {} };
+      await handleDriveSync(fakeEvent);
+    }
+
+    async function loadDriveBookmarks() {
+      try {
+        const res = await fetch('/api/drive/bookmarks');
+        driveBookmarks = await res.json();
+        renderDriveBookmarks();
+      } catch(e) {}
+    }
+
+    async function handleDriveSync(e) {
+      e.preventDefault();
+      const url = document.getElementById('drive-url').value;
+      const folderName = document.getElementById('drive-folder-name').value;
+      const btn = document.getElementById('btn-sync-submit');
+
+      btn.innerText = 'Đang đồng bộ...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/drive/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, folder_name: folderName })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`🎉 Đồng bộ thành công kho nhạc Google Drive "${data.folder_name || 'Album'}"!\nĐã trích xuất ${data.added} bài hát Hi-Res và lưu vĩnh viễn vào library.json.`);
+          closeDriveModal();
+          await loadTracks();
+          renderAlbumSubBar();
+          filterTracks('cloud');
+        } else {
+          alert('Không thể đồng bộ: ' + (data.error || 'Vui lòng kiểm tra lại link!'));
+        }
+      } catch (err) {
+        alert('Lỗi kết nối máy chủ khi đồng bộ Drive.');
+      } finally {
+        btn.innerText = 'Đồng bộ ngay';
+        btn.disabled = false;
+      }
+    }
+
+    function openManageDeleteModal() {
+      document.getElementById('del-total-all-count').innerText = tracks.length;
+      document.getElementById('del-search-input').value = '';
+      renderDeleteList();
+      document.getElementById('delete-modal').style.display = 'flex';
+    }
+
+    function closeManageDeleteModal() {
+      document.getElementById('delete-modal').style.display = 'none';
+    }
+
+    function renderDeleteList() {
+      const list = document.getElementById('delete-track-list');
+      const searchVal = (document.getElementById('del-search-input').value || '').toLowerCase().trim();
+      list.innerHTML = '';
+
+      const matched = tracks.filter(t => {
+        if (!searchVal) return true;
+        return (t.title && t.title.toLowerCase().includes(searchVal)) ||
+               (t.artist && t.artist.toLowerCase().includes(searchVal)) ||
+               (t.album && t.album.toLowerCase().includes(searchVal));
+      });
+
+      document.getElementById('del-list-total').innerText = matched.length;
+
+      if (matched.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:18px;">Không có bài hát nào phù hợp.</div>';
+        updateDeleteButtonState();
+        return;
+      }
+
+      matched.forEach(t => {
+        const item = document.createElement('label');
+        item.style.cssText = 'display:flex; align-items:center; gap:10px; cursor:pointer; font-size:0.85rem; padding:6px 8px; border-radius:6px; transition:background 0.15s; border-bottom:1px solid rgba(255,255,255,0.03);';
+        item.onmouseenter = () => item.style.background = 'rgba(255,255,255,0.05)';
+        item.onmouseleave = () => item.style.background = 'transparent';
+        item.innerHTML = `
+          <input type="checkbox" class="del-track-checkbox" value="${t.id}" onchange="updateDeleteButtonState()" style="accent-color: #ef4444; width:16px; height:16px; cursor:pointer;" />
+          <span style="font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.title}</span>
+          <span style="color:var(--text-muted); font-size:0.8rem; max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.artist}</span>
+          <span class="badge ${t.source === 'LOCAL' ? 'badge-local' : 'badge-cloud'}" style="font-size:0.7rem; padding:2px 6px;">${t.source === 'LOCAL' ? 'Local' : 'Drive'}</span>
+        `;
+        list.appendChild(item);
+      });
+
+      updateDeleteButtonState();
+    }
+
+    function filterDeleteList() {
+      renderDeleteList();
+    }
+
+    function toggleSelectAllDelete() {
+      const boxes = document.querySelectorAll('.del-track-checkbox');
+      const allChecked = Array.from(boxes).length > 0 && Array.from(boxes).every(b => b.checked);
+      boxes.forEach(b => b.checked = !allChecked);
+      updateDeleteButtonState();
+    }
+
+    function updateDeleteButtonState() {
+      const checkedBoxes = document.querySelectorAll('.del-track-checkbox:checked');
+      const count = checkedBoxes.length;
+      const countLabel = document.getElementById('del-checked-count');
+      if (countLabel) countLabel.innerText = count;
+      const btnNum = document.getElementById('btn-del-num');
+      if (btnNum) btnNum.innerText = count;
+      const btn = document.getElementById('btn-delete-selected');
+      if (btn) {
+        btn.disabled = (count === 0);
+        btn.style.opacity = count === 0 ? '0.45' : '1';
+      }
+    }
+
+    async function handleDeleteAll() {
+      if (tracks.length === 0) {
+        alert('Thư viện đang trống, không có bài hát nào để xóa.');
+        return;
+      }
+      const confirmed = confirm(
+        `⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ ${tracks.length} BÀI HÁT KHỎI THƯ VIỆN?\n\n` +
+        `• Toàn bộ danh sách trong library.json sẽ bị xóa sạch.\n` +
+        `• Thao tác này không thể hoàn tác.`
+      );
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch('/api/library/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ all: true })
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('library_cleared', 'true');
+          localStorage.removeItem('cover_cache');
+          coverCache = {};
+          audio.pause();
+          audio.src = '';
+          currentPlayingId = null;
+          document.getElementById('play-pause-btn').innerText = '▶';
+          document.getElementById('bar-title').innerText = 'Chưa phát bài nào';
+          document.getElementById('bar-artist').innerText = 'Thư viện đã được làm sạch';
+          alert(`🎉 Đã xóa toàn bộ ${data.deleted} bài hát khỏi thư viện thành công!`);
+          closeManageDeleteModal();
+          await loadTracks();
+          renderAlbumSubBar();
+        } else {
+          alert('Không thể xóa thư viện: ' + (data.error || 'Lỗi'));
+        }
+      } catch(e) {
+        alert('Lỗi kết nối máy chủ khi xóa thư viện.');
+      }
+    }
+
+    async function handleDeleteSelected() {
+      const checkedBoxes = document.querySelectorAll('.del-track-checkbox:checked');
+      const ids = Array.from(checkedBoxes).map(b => parseInt(b.value));
+      if (ids.length === 0) return;
+
+      const confirmed = confirm(`Bạn có chắc muốn xóa ${ids.length} bài hát đã chọn khỏi thư viện?`);
+      if (!confirmed) return;
+
+      const btn = document.getElementById('btn-delete-selected');
+      btn.innerText = 'Đang xóa...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/library/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ track_ids: ids })
+        });
+        const data = await res.json();
+        if (data.success) {
+          for (const id of ids) {
+            delete coverCache[id];
+          }
+          if (ids.includes(currentPlayingId)) {
+            audio.pause();
+            audio.src = '';
+            currentPlayingId = null;
+            document.getElementById('play-pause-btn').innerText = '▶';
+            document.getElementById('bar-title').innerText = 'Chưa phát bài nào';
+            document.getElementById('bar-artist').innerText = 'Chọn một bài hát để bắt đầu';
+          }
+          alert(`🎉 Đã xóa ${data.deleted} bài hát thành công!`);
+          closeManageDeleteModal();
+          await loadTracks();
+          renderAlbumSubBar();
+        } else {
+          alert('Không thể xóa bài hát: ' + (data.error || 'Lỗi'));
+        }
+      } catch(e) {
+        alert('Lỗi kết nối máy chủ khi xóa bài hát.');
+      } finally {
+        btn.innerHTML = `🗑️ Xóa <span id="btn-del-num">0</span> bài đã chọn`;
+        updateDeleteButtonState();
+      }
+    }
+
+    async function deleteSingleTrack(id, title) {
+      if (!confirm(`Bạn có chắc muốn xóa bài hát "${title}" khỏi thư viện?`)) return;
+      try {
+        const res = await fetch('/api/library/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ track_ids: [id] })
+        });
+        const data = await res.json();
+        if (data.success) {
+          delete coverCache[id];
+          if (currentPlayingId === id) {
+            audio.pause();
+            audio.src = '';
+            currentPlayingId = null;
+            document.getElementById('play-pause-btn').innerText = '▶';
+            document.getElementById('bar-title').innerText = 'Chưa phát bài nào';
+            document.getElementById('bar-artist').innerText = 'Chọn một bài hát để bắt đầu';
+          }
+          await loadTracks();
+          renderAlbumSubBar();
+        } else {
+          alert('Không thể xóa bài hát: ' + (data.error || 'Lỗi'));
+        }
+      } catch(e) {
+        alert('Lỗi kết nối máy chủ khi xóa bài hát.');
+      }
+    }
+
+    let currentCoverTrackId = null;
+    let currentCoverAlbum = null;
+    let selectedCoverAction = 'file';
+    let selectedCoverBase64 = null;
+    let selectedCoverUrl = null;
+    let selectedCopyFromId = null;
+
+    function setCoverTab(tab) {
+      selectedCoverAction = tab;
+      ['file', 'url', 'copy', 'remove'].forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const panel = document.getElementById(`tab-panel-${t}`);
+        if (btn) btn.classList.toggle('active', t === tab);
+        if (panel) panel.style.display = (t === tab) ? 'block' : 'none';
+      });
+
+      const previewImg = document.getElementById('modal-cover-preview-img');
+      const previewFallback = document.getElementById('modal-cover-preview-fallback');
+
+      if (tab === 'remove') {
+        previewImg.style.display = 'none';
+        previewFallback.style.display = 'block';
+      } else if (tab === 'file' && selectedCoverBase64) {
+        previewImg.src = selectedCoverBase64;
+        previewImg.style.display = 'block';
+        previewFallback.style.display = 'none';
+      } else if (tab === 'url' && selectedCoverUrl) {
+        previewImg.src = selectedCoverUrl;
+        previewImg.style.display = 'block';
+        previewFallback.style.display = 'none';
+      } else if (tab === 'copy' && selectedCopyFromId) {
+        previewImg.src = `/api/cover/${selectedCopyFromId}`;
+        previewImg.style.display = 'block';
+        previewFallback.style.display = 'none';
+      }
+    }
+
+    function openCoverModal(trackId) {
+      let target = null;
+      if (trackId) {
+        target = tracks.find(t => t.id === trackId);
+      }
+      if (!target && currentPlayingId) {
+        target = tracks.find(t => t.id === currentPlayingId);
+      }
+      if (!target && tracks.length > 0) {
+        target = tracks[0];
+      }
+      if (!target) {
+        alert("Chưa có bài hát nào trong thư viện để gán bìa!");
+        return;
+      }
+
+      currentCoverTrackId = target.id;
+      currentCoverAlbum = target.album || 'Unknown Album';
+
+      document.getElementById('modal-cover-track-title').innerText = target.title;
+      document.getElementById('modal-cover-track-sub').innerText = `${target.artist} • ${currentCoverAlbum}`;
+      document.getElementById('scope-album-name').innerText = currentCoverAlbum;
+      document.getElementById('scope-all-count').innerText = tracks.length;
+
+      // Initial preview from current track cover
+      const previewImg = document.getElementById('modal-cover-preview-img');
+      const previewFallback = document.getElementById('modal-cover-preview-fallback');
+      const curCover = coverCache[target.id] || target.custom_cover;
+
+      if (curCover && curCover !== 'none') {
+        previewImg.src = curCover;
+        previewImg.style.display = 'block';
+        previewFallback.style.display = 'none';
+        document.getElementById('modal-cover-source-tag').innerText = 'Trạng thái: Đang có ảnh bìa';
+      } else {
+        previewImg.style.display = 'none';
+        previewFallback.style.display = 'block';
+        document.getElementById('modal-cover-source-tag').innerText = 'Trạng thái: Bìa mặc định (Đĩa than 💿)';
+      }
+
+      // Populate copy select
+      const copySel = document.getElementById('cover-copy-select');
+      copySel.innerHTML = '<option value="">-- Chọn bài hát mẫu để lấy bìa --</option>';
+      tracks.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.innerText = `#${t.id} - ${t.title} (${t.artist})`;
+        if (t.id === target.id) opt.innerText += ' [Bài hiện tại]';
+        copySel.appendChild(opt);
+      });
+
+      // Reset inputs
+      document.getElementById('cover-file-input').value = '';
+      document.getElementById('cover-url-input').value = '';
+      selectedCoverBase64 = null;
+      selectedCoverUrl = null;
+      selectedCopyFromId = null;
+
+      // Default to file tab and 'track' scope
+      const trackRadio = document.querySelector('input[name="cover-scope"][value="track"]');
+      if (trackRadio) trackRadio.checked = true;
+      setCoverTab('file');
+
+      document.getElementById('cover-modal').style.display = 'flex';
+    }
+
+    function closeCoverModal() {
+      document.getElementById('cover-modal').style.display = 'none';
+    }
+
+    function handleCoverFileSelected(input) {
+      if (input.files && input.files[0]) {
+        loadCoverFile(input.files[0]);
+      }
+    }
+
+    function handleCoverDrop(e) {
+      e.preventDefault();
+      e.currentTarget.style.background = 'rgba(157,78,221,0.04)';
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+        loadCoverFile(e.dataTransfer.files[0]);
+      }
+    }
+
+    function loadCoverFile(file) {
+      if (!file.type.startsWith('image/')) {
+        alert("Vui lòng chọn file hình ảnh (JPG, PNG, WEBP)!");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        selectedCoverBase64 = e.target.result;
+        const previewImg = document.getElementById('modal-cover-preview-img');
+        const previewFallback = document.getElementById('modal-cover-preview-fallback');
+        previewImg.src = selectedCoverBase64;
+        previewImg.style.display = 'block';
+        previewFallback.style.display = 'none';
+        document.getElementById('modal-cover-source-tag').innerText = `Ảnh từ máy: ${file.name} (${(file.size/1024).toFixed(0)} KB)`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function previewUrlCover() {
+      const url = document.getElementById('cover-url-input').value.trim();
+      if (!url) {
+        alert("Vui lòng dán link ảnh hợp lệ!");
+        return;
+      }
+      selectedCoverUrl = url;
+      const previewImg = document.getElementById('modal-cover-preview-img');
+      const previewFallback = document.getElementById('modal-cover-preview-fallback');
+      previewImg.src = url;
+      previewImg.style.display = 'block';
+      previewFallback.style.display = 'none';
+      document.getElementById('modal-cover-source-tag').innerText = 'Link ảnh web đã nạp xem trước';
+    }
+
+    function previewCopyCover(val) {
+      if (!val) return;
+      selectedCopyFromId = parseInt(val);
+      const previewImg = document.getElementById('modal-cover-preview-img');
+      const previewFallback = document.getElementById('modal-cover-preview-fallback');
+      previewImg.src = `/api/cover/${selectedCopyFromId}?t=${Date.now()}`;
+      previewImg.style.display = 'block';
+      previewFallback.style.display = 'none';
+      document.getElementById('modal-cover-source-tag').innerText = `Lấy bìa mẫu từ bài #${selectedCopyFromId}`;
+    }
+
+    async function handleSaveCover() {
+      const scopeEl = document.querySelector('input[name="cover-scope"]:checked');
+      const scope = scopeEl ? scopeEl.value : 'track';
+
+      let action = selectedCoverAction;
+      if (action === 'file') {
+        if (!selectedCoverBase64) {
+          alert("Vui lòng chọn hoặc kéo thả 1 file ảnh từ máy tính!");
+          return;
+        }
+      } else if (action === 'url') {
+        if (!selectedCoverUrl) {
+          previewUrlCover();
+          if (!selectedCoverUrl) return;
+        }
+      } else if (action === 'copy') {
+        if (!selectedCopyFromId) {
+          alert("Vui lòng chọn 1 bài hát mẫu để sao chép ảnh bìa!");
+          return;
+        }
+      }
+
+      const btn = document.getElementById('btn-save-cover');
+      btn.innerText = 'Đang lưu ảnh bìa...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/cover/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            track_id: currentCoverTrackId,
+            scope: scope,
+            album: currentCoverAlbum,
+            action: action,
+            image_base64: selectedCoverBase64,
+            image_url: selectedCoverUrl,
+            copy_from_id: selectedCopyFromId
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          coverCache = {}; // Invalidate frontend cover cache
+          alert(`🎉 Cập nhật ảnh bìa thành công!\nĐã áp dụng cho ${data.modified} bài hát.`);
+          closeCoverModal();
+          await loadTracks();
+          if (currentPlayingId) {
+            const curT = tracks.find(t => t.id === currentPlayingId);
+            if (curT) loadArtworkForTrack(curT);
+          }
+        } else {
+          alert("Lỗi khi cập nhật ảnh bìa: " + (data.error || "Thất bại"));
+        }
+      } catch (err) {
+        alert("Lỗi kết nối máy chủ khi lưu ảnh bìa.");
+      } finally {
+        btn.innerText = '💾 Cập nhật bìa ngay';
+        btn.disabled = false;
+      }
+    }
+
+    async function updateOfflineInfo() {
+      try {
+        const res = await fetch('/api/tracks/offline_info');
+        const data = await res.json();
+        const countEl = document.getElementById('count-offline');
+        if (countEl) countEl.innerText = data.offline_count;
+        const sideMb = document.getElementById('storage-offline-mb');
+        if (sideMb) sideMb.innerText = `${data.size_mb} MB`;
+        const mCount = document.getElementById('modal-offline-count');
+        if (mCount) mCount.innerText = data.offline_count;
+        const mTotal = document.getElementById('modal-offline-total');
+        if (mTotal) mTotal.innerText = data.total_tracks;
+        const mSize = document.getElementById('modal-offline-size');
+        if (mSize) mSize.innerText = data.size_mb;
+      } catch(e) {}
+    }
+
+    async function downloadSingleTrack(id, title) {
+      const btn = event.currentTarget;
+      if (btn) btn.innerText = '⏳';
+      try {
+        const res = await fetch('/api/tracks/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ track_ids: [id] })
+        });
+        const data = await res.json();
+        if (data.success && data.downloaded > 0) {
+          await loadTracks();
+          updateOfflineInfo();
+        } else {
+          alert("Không thể tải bài hát này về máy.");
+          await loadTracks();
+        }
+      } catch(e) {
+        alert("Lỗi kết nối máy chủ khi tải nhạc offline.");
+        await loadTracks();
+      }
+    }
+
+    async function deleteSingleOffline(id, title) {
+      if (!confirm(`Xóa bản tải offline của bài "${title}" khỏi máy tính?`)) return;
+      try {
+        const res = await fetch('/api/tracks/delete_offline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ track_ids: [id] })
+        });
+        const data = await res.json();
+        if (data.success) {
+          await loadTracks();
+          updateOfflineInfo();
+        }
+      } catch(e) {
+        alert("Lỗi kết nối khi xóa file offline.");
+      }
+    }
+
+    async function openOfflineModal() {
+      await updateOfflineInfo();
+      document.getElementById('offline-modal').style.display = 'flex';
+    }
+
+    function closeOfflineModal() {
+      document.getElementById('offline-modal').style.display = 'none';
+    }
+
+    async function downloadAllTracks() {
+      const pending = tracks.filter(t => !t.offline_path).map(t => t.id);
+      if (pending.length === 0) {
+        alert("Toàn bộ bài hát trong thư viện đã được lưu offline trên máy!");
+        return;
+      }
+      const confirmed = confirm(`Tải ${pending.length} bài hát về máy tính để nghe offline?`);
+      if (!confirmed) return;
+
+      const btn = document.getElementById('btn-download-all');
+      btn.innerText = `⏳ Đang tải ${pending.length} bài về máy... (vui lòng chờ)`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/tracks/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ track_ids: pending })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`🎉 Đã tải thành công ${data.downloaded} bài hát về máy!\nGiờ bạn có thể nghe nhạc mượt mà ngay cả khi ngắt kết nối mạng.`);
+          closeOfflineModal();
+          await loadTracks();
+          updateOfflineInfo();
+        }
+      } catch(e) {
+        alert("Lỗi trong quá trình tải nhạc offline.");
+      } finally {
+        btn.innerText = '⬇️ Tải TOÀN BỘ thư viện về máy (Nghe không cần mạng)';
+        btn.disabled = false;
+      }
+    }
+
+    async function downloadCurrentAlbumTracks() {
+      if (!selectedAlbum) {
+        alert("Vui lòng chọn 1 Album ở thanh lọc phía trên trước khi tải theo Album!");
+        return;
+      }
+      const pending = tracks.filter(t => t.album === selectedAlbum && !t.offline_path).map(t => t.id);
+      if (pending.length === 0) {
+        alert(`Tất cả bài trong album "${selectedAlbum}" đã có sẵn offline!`);
+        return;
+      }
+      const confirmed = confirm(`Tải ${pending.length} bài của Album "${selectedAlbum}" về máy?`);
+      if (!confirmed) return;
+
+      const btn = document.getElementById('btn-download-album');
+      btn.innerText = `⏳ Đang tải Album...`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/tracks/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ track_ids: pending })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`🎉 Đã tải ${data.downloaded} bài của Album "${selectedAlbum}" về máy thành công!`);
+          closeOfflineModal();
+          await loadTracks();
+          updateOfflineInfo();
+        }
+      } catch(e) {
+        alert("Lỗi tải nhạc album.");
+      } finally {
+        btn.innerText = '⬇️ Tải tất cả bài thuộc Album đang chọn';
+        btn.disabled = false;
+      }
+    }
+
+    async function clearAllOfflineCache() {
+      if (!confirm("⚠️ Bạn có chắc muốn xóa tất cả file offline đã tải về để giải phóng dung lượng?")) return;
+      try {
+        const res = await fetch('/api/tracks/delete_offline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ all: true })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`🎉 Đã xóa các file tải offline thành công!`);
+          closeOfflineModal();
+          await loadTracks();
+          updateOfflineInfo();
+        }
+      } catch(e) {
+        alert("Lỗi xóa cache offline.");
+      }
+    }
+
+    function toggleSignalModal(show) {
+      document.getElementById('signal-modal').style.display = show ? 'flex' : 'none';
+    }
+
+    function setTab(tab) {
+      if (tab === 'cloud') {
+        filterTracks('cloud');
+      } else {
+        filterTracks(tab);
+      }
+    }
+
+    loadTracks();
+  </script>
+</body>
+</html>

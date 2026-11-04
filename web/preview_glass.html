@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyMusic Hi-Res - Windows 11 Acrylic Glass Concept</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Modern Vector Icons (Lucide - Fluent Design standard) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg-base: #070a11;
+      --glass-panel: rgba(15, 20, 34, 0.62);
+      --glass-panel-hover: rgba(22, 30, 48, 0.78);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-border-light: rgba(255, 255, 255, 0.16);
+      --glass-border-active: rgba(168, 85, 247, 0.45);
+      --accent-purple: #a855f7;
+      --accent-cyan: #06b6d4;
+      --accent-gradient: linear-gradient(135deg, #a855f7 0%, #3b82f6 50%, #06b6d4 100%);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Ambient Background Light Blobs (Mica/Acrylic feel) */
+    .ambient-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.28;
+      animation: floatSlow 18s ease-in-out infinite alternate;
+    }
+    .blob-1 {
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, #7e22ce, #3b82f6);
+      top: -120px;
+      left: -80px;
+    }
+    .blob-2 {
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, #0284c7, #0d9488);
+      bottom: -150px;
+      right: -100px;
+      animation-delay: -7s;
+    }
+    .blob-3 {
+      width: 380px;
+      height: 380px;
+      background: radial-gradient(circle, #ec4899, #8b5cf6);
+      top: 40%;
+      left: 45%;
+      opacity: 0.16;
+      animation-duration: 24s;
+    }
+    @keyframes floatSlow {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, 30px) scale(1.08); }
+    }
+
+    /* Grid Overlay */
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* Vector Icon Universal Sizing */
+    .lucide-icon, svg.lucide {
+      width: 18px;
+      height: 18px;
+      stroke-width: 1.85px;
+      vertical-align: middle;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* Top Bar - Windows Titlebar & Nuclear Top Navigation */
+    .top-bar {
+      position: relative;
+      z-index: 10;
+      height: 54px;
+      background: rgba(11, 15, 25, 0.72);
+      backdrop-filter: blur(28px) saturate(190%);
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+
+    .top-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 260px;
+    }
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+    .app-brand-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(168, 85, 247, 0.4);
+      color: #fff;
+    }
+    .app-brand-logo svg {
+      width: 18px;
+      height: 18px;
+      stroke: #fff;
+    }
+    .app-brand-name {
+      background: linear-gradient(135deg, #ffffff 30%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .nav-arrows {
+      display: flex;
+      gap: 6px;
+      margin-left: 6px;
+    }
+    .nav-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-btn svg {
+      width: 15px;
+      height: 15px;
+    }
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+    }
+
+    /* Centered Search Bar */
+    .top-center {
+      flex: 1;
+      max-width: 580px;
+      position: relative;
+    }
+    .search-box {
+      width: 100%;
+      height: 36px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border-light);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 10px;
+      backdrop-filter: blur(12px);
+      transition: all 0.25s ease;
+    }
+    .search-box:focus-within {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2), 0 6px 18px rgba(0, 0, 0, 0.3);
+    }
+    .search-box svg {
+      color: var(--text-dim);
+      width: 16px;
+      height: 16px;
+    }
+    .search-box input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.86rem;
+    }
+    .search-box input::placeholder {
+      color: var(--text-dim);
+    }
+    .search-shortcut {
+      font-size: 0.72rem;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+      border: 1px solid var(--glass-border);
+    }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .add-music-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(168, 85, 247, 0.18);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #f3e8ff;
+      padding: 6px 14px;
+      border-radius: 9px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .add-music-btn svg {
+      width: 15px;
+      height: 15px;
+    }
+    .add-music-btn:hover {
+      background: rgba(168, 85, 247, 0.32);
+      box-shadow: 0 0 14px rgba(168, 85, 247, 0.35);
+      transform: translateY(-1px);
+    }
+    .window-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 8px;
+      padding-left: 10px;
+      border-left: 1px solid var(--glass-border);
+    }
+    .win-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .win-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+    .win-btn.close:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    /* Main Container */
+    .app-body {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Left Sidebar Glass */
+    .sidebar {
+      width: 250px;
+      background: var(--glass-panel);
+      backdrop-filter: blur(32px) saturate(190%);
+      border-right: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 12px;
+      overflow-y: auto;
+    }
+    .sidebar-section {
+      margin-bottom: 22px;
+    }
+    .sidebar-title {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+      padding: 0 12px 8px;
+    }
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+    .nav-item .nav-icon {
+      width: 19px;
+      height: 19px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      transition: color 0.2s;
+    }
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      transform: translateX(2px);
+    }
+    .nav-item:hover .nav-icon {
+      color: var(--text-main);
+    }
+    .nav-item.active {
+      background: rgba(168, 85, 247, 0.16);
+      color: #f3e8ff;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      box-shadow: 0 4px 16px rgba(168, 85, 247, 0.15);
+    }
+    .nav-item.active .nav-icon {
+      color: #c084fc;
+    }
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3.5px;
+      background: var(--accent-gradient);
+      border-radius: 4px;
+      box-shadow: 0 0 10px var(--accent-purple);
+    }
+    .badge-count {
+      margin-left: auto;
+      font-size: 0.72rem;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+    }
+    .nav-item.active .badge-count {
+      background: rgba(168, 85, 247, 0.35);
+      color: #fff;
+    }
+
+    /* Zero-Disk Storage Pill Card at Sidebar Bottom */
+    .ram-buffer-card {
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      border-radius: 12px;
+      padding: 12px;
+      backdrop-filter: blur(12px);
+    }
+    .ram-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #67e8f9;
+      margin-bottom: 6px;
+    }
+    .ram-title svg {
+      width: 14px;
+      height: 14px;
+      stroke: #67e8f9;
+    }
+    .ram-desc {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      line-height: 1.4;
+    }
+    .ram-meter {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .ram-meter-fill {
+      width: 74%;
+      height: 100%;
+      background: linear-gradient(90deg, #06b6d4, #a855f7);
+      border-radius: 4px;
+    }
+
+    /* Main Dashboard Content Area */
+    .main-view {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 30px 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* Dashboard Header & Floating Mini Widget */
+    .dashboard-top-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .dashboard-header-text h1 {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .dashboard-header-text p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    /* Quick Filter Chips */
+    .filter-chips {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chip:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+    .chip.active {
+      background: rgba(168, 85, 247, 0.2);
+      border-color: rgba(168, 85, 247, 0.5);
+      color: #f3e8ff;
+      box-shadow: 0 2px 10px rgba(168, 85, 247, 0.2);
+    }
+
+    /* Floating Mini Now Playing Card (Clickable to open vinyl) */
+    .mini-player-widget {
+      width: 290px;
+      background: var(--glass-panel);
+      backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--glass-border-light);
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .mini-player-widget:hover {
+      background: var(--glass-panel-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 14px 36px rgba(168, 85, 247, 0.25);
+      border-color: var(--glass-border-active);
+    }
+    .mini-cover {
+      width: 46px;
+      height: 46px;
+      border-radius: 10px;
+      object-fit: cover;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+    .mini-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .mini-title {
+      font-size: 0.84rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fff;
+    }
+    .mini-artist {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .mini-now-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.68rem;
+      color: #c084fc;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+    .sound-bars {
+      display: flex;
+      gap: 2px;
+      align-items: flex-end;
+      height: 10px;
+    }
+    .bar {
+      width: 2px;
+      background: #c084fc;
+      border-radius: 1px;
+      animation: barJump 1s ease-in-out infinite alternate;
+    }
+    .bar:nth-child(2) { animation-delay: 0.2s; height: 8px; }
+    .bar:nth-child(3) { animation-delay: 0.4s; height: 10px; }
+    .bar:nth-child(1) { height: 6px; }
+    @keyframes barJump {
+      0% { height: 3px; }
+      100% { height: 10px; }
+    }
+
+    /* Section 1: Carousel Artists / Albums */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .section-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+    .section-tag {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(6, 182, 212, 0.15);
+      color: #67e8f9;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      font-weight: 600;
+    }
+    .carousel-nav {
+      display: flex;
+      gap: 6px;
+    }
+    .carousel-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .carousel-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+    .carousel-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    /* Card Grid */
+    .card-carousel {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .music-card {
+      background: var(--glass-panel);
+      backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+    .music-card:hover {
+      background: var(--glass-panel-hover);
+      transform: translateY(-5px);
+      border-color: rgba(168, 85, 247, 0.4);
+      box-shadow: 0 14px 34px rgba(168, 85, 247, 0.2), 0 0 0 1px rgba(168, 85, 247, 0.3);
+    }
+    .card-cover-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1/1;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #111624;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+    .card-cover-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .music-card:hover .card-cover-img {
+      transform: scale(1.05);
+    }
+    .card-play-hover {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .music-card:hover .card-play-hover {
+      opacity: 1;
+    }
+    .card-play-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 4px 18px rgba(168, 85, 247, 0.6);
+      transform: scale(0.85);
+      transition: transform 0.2s ease;
+    }
+    .card-play-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: #fff;
+      stroke: none;
+      margin-left: 2px;
+    }
+    .music-card:hover .card-play-icon {
+      transform: scale(1);
+    }
+    .card-tag {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      font-size: 0.64rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #facc15;
+    }
+    .card-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-main);
+    }
+    .card-sub {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Section 2: Nuclear Tracklist */
+    .table-container {
+      background: var(--glass-panel);
+      backdrop-filter: blur(32px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+    }
+
+    .table-toolbar {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .play-all-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-gradient);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(168, 85, 247, 0.4);
+      transition: all 0.2s;
+    }
+    .play-all-btn svg {
+      width: 15px;
+      height: 15px;
+      fill: #fff;
+      stroke: none;
+    }
+    .play-all-btn:hover {
+      box-shadow: 0 6px 20px rgba(168, 85, 247, 0.6);
+      transform: translateY(-1px);
+    }
+    .secondary-tool-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .secondary-tool-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+    .secondary-tool-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .table-search {
+      width: 240px;
+      height: 34px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      gap: 8px;
+    }
+    .table-search svg {
+      width: 14px;
+      height: 14px;
+      color: var(--text-dim);
+    }
+    .table-search input {
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      width: 100%;
+    }
+
+    /* Track Table Elements */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-dim);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    td {
+      padding: 10px 16px;
+      font-size: 0.84rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      vertical-align: middle;
+      color: var(--text-muted);
+    }
+    tr {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    tr:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+    tr.playing {
+      background: rgba(168, 85, 247, 0.12);
+      border-left: 3px solid var(--accent-purple);
+    }
+    tr.playing td {
+      color: #f3e8ff;
+    }
+
+    .td-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .track-thumb {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #1e2433;
+    }
+    .track-name-bold {
+      font-weight: 700;
+      color: #fff;
+    }
+    .track-badges {
+      display: flex;
+      gap: 6px;
+      margin-top: 3px;
+    }
+    .badge-hires {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(234, 179, 8, 0.18);
+      color: #fde047;
+      border: 1px solid rgba(234, 179, 8, 0.35);
+    }
+    .badge-ram {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(6, 182, 212, 0.18);
+      color: #67e8f9;
+      border: 1px solid rgba(6, 182, 212, 0.35);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .badge-ram svg {
+      width: 10px;
+      height: 10px;
+      stroke: #67e8f9;
+    }
+    .badge-source {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      border: 1px solid var(--glass-border);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .badge-source svg {
+      width: 12px;
+      height: 12px;
+    }
+    .action-icons {
+      display: flex;
+      gap: 10px;
+      color: var(--text-dim);
+      align-items: center;
+      justify-content: center;
+    }
+    .action-icons span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .action-icons span:hover {
+      color: #fff;
+    }
+    .action-icons svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    /* Fixed Bottom Player Dock (Windows Acrylic Glass) */
+    .player-dock {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+      background: rgba(10, 14, 24, 0.85);
+      backdrop-filter: blur(36px) saturate(200%);
+      border-top: 1px solid var(--glass-border-light);
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.45);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+    }
+
+    /* Player Left: Clickable to open Vinyl Record! */
+    .player-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 290px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+    .player-left:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .dock-vinyl {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #2b3040 0%, #0d111a 75%, #05070c 100%);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      animation: spinVinyl 6s linear infinite;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+      flex-shrink: 0;
+    }
+    .player-left:hover .dock-vinyl {
+      transform: scale(1.08);
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.5);
+      border-color: rgba(168, 85, 247, 0.6);
+    }
+    @keyframes spinVinyl {
+      100% { transform: rotate(360deg); }
+    }
+    .dock-vinyl-center {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background-image: url('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&q=80');
+      background-size: cover;
+      border: 1.5px solid rgba(255, 255, 255, 0.6);
+    }
+    .dock-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .dock-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: color 0.2s;
+    }
+    .player-left:hover .dock-title {
+      color: #c084fc;
+    }
+    .dock-artist {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dock-open-tip {
+      font-size: 0.68rem;
+      color: var(--accent-purple);
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: all 0.2s ease;
+    }
+    .player-left:hover .dock-open-tip {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Player Center */
+    .player-center {
+      flex: 1;
+      max-width: 540px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .playback-buttons {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .ctrl-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ctrl-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+    .ctrl-btn:hover {
+      color: #fff;
+      transform: scale(1.1);
+    }
+    .play-pause-orb {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(168, 85, 247, 0.5);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      border: none;
+    }
+    .play-pause-orb svg {
+      width: 20px;
+      height: 20px;
+      stroke: #fff;
+      fill: #fff;
+    }
+    .play-pause-orb:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 22px rgba(168, 85, 247, 0.7);
+    }
+
+    .seekbar-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .time-stamp {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+      width: 32px;
+    }
+    .time-stamp.right {
+      text-align: right;
+    }
+    .seekbar {
+      flex: 1;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+    }
+    .seekbar-fill {
+      width: 36%;
+      height: 100%;
+      background: var(--accent-gradient);
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+    }
+
+    /* Player Right (Clean Audio Engine Controls - No clumsy big button) */
+    .player-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 300px;
+      justify-content: flex-end;
+    }
+    .vol-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .vol-slider {
+      width: 75px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      position: relative;
+      cursor: pointer;
+    }
+    .vol-fill {
+      width: 70%;
+      height: 100%;
+      background: var(--text-muted);
+      border-radius: 2px;
+    }
+    .wasapi-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 9px;
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .wasapi-badge svg {
+      width: 14px;
+      height: 14px;
+      stroke: #4ade80;
+    }
+
+    /* Heart icons */
+    .heart-icon {
+      width: 16px;
+      height: 16px;
+      transition: all 0.2s;
+    }
+    .heart-icon.filled {
+      fill: #ec4899;
+      stroke: #ec4899;
+    }
+    .heart-icon.empty {
+      fill: none;
+      stroke: var(--text-dim);
+    }
+
+    /* =========================================================
+       NOW PLAYING IMMERSIVE VIEW (VINYL TURNTABLE OVERLAY)
+       ========================================================= */
+    .np-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      background: #06080d;
+      display: none;
+      flex-direction: column;
+      opacity: 0;
+      transform: scale(0.985);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+    }
+    .np-overlay.active {
+      display: flex;
+      opacity: 1;
+      transform: scale(1);
+    }
+    .np-backdrop {
+      position: absolute;
+      inset: -60px;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .np-backdrop-img {
+      width: calc(100% + 120px);
+      height: calc(100% + 120px);
+      object-fit: cover;
+      filter: blur(90px) brightness(0.24) saturate(2.4);
+      transform: scale(1.1);
+    }
+    .np-backdrop-gradient {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 40% 40%, rgba(13, 17, 28, 0.4) 0%, rgba(6, 8, 13, 0.94) 75%, #06080d 100%);
+    }
+
+    .np-container {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px 40px;
+    }
+
+    /* Top Bar in Overlay */
+    .np-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 50px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+    }
+    .np-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #e2e8f0;
+      padding: 7px 16px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .np-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+    }
+    .np-close-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .np-close-btn:hover {
+      background: #ef4444;
+      border-color: #ef4444;
+    }
+
+    /* Centered Vinyl Turntable Platter */
+    .np-vinyl-center-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      height: calc(100vh - 190px);
+      gap: 24px;
+    }
+    .np-turntable-platter {
+      position: relative;
+      width: 440px;
+      height: 440px;
+      max-width: 52vh;
+      max-height: 52vh;
+      aspect-ratio: 1/1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle, #1a1e27 0%, #0d1017 65%, #090b10 100%);
+      border-radius: 50%;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.94), 0 0 0 8px rgba(30, 36, 48, 0.55), 0 0 0 10px rgba(255, 255, 255, 0.05);
+    }
+
+    /* Tonearm */
+    .np-tonearm {
+      position: absolute;
+      top: -24px;
+      right: -32px;
+      width: 110px;
+      height: 290px;
+      z-index: 15;
+      pointer-events: none;
+      transform-origin: 32px 32px;
+      transform: rotate(26deg);
+      transition: transform 1.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    .np-arm-pivot {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #f1f5f9 0%, #64748b 60%, #334155 100%);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.7), inset 0 1px 3px rgba(255,255,255,0.8);
+      border: 2px solid #475569;
+    }
+    .np-arm-rod {
+      position: absolute;
+      top: 32px;
+      left: 30px;
+      width: 5px;
+      height: 235px;
+      background: linear-gradient(to right, #94a3b8, #f8fafc, #64748b);
+      border-radius: 3px;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+      transform: rotate(4deg);
+      transform-origin: top center;
+    }
+    .np-arm-head {
+      position: absolute;
+      bottom: 24px;
+      left: 34px;
+      width: 18px;
+      height: 36px;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border-radius: 3px;
+      border: 1px solid #64748b;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.65);
+      transform: rotate(-18deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .np-arm-needle-light {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #a855f7;
+      box-shadow: 0 0 10px #a855f7, 0 0 16px #c084fc;
+    }
+
+    /* Rotating Vinyl Platter */
+    .np-vinyl-disc {
+      position: relative;
+      width: 93%;
+      height: 93%;
+      border-radius: 50%;
+      background: 
+        repeating-radial-gradient(
+          circle at center,
+          #0b0d12 0px,
+          #161922 2px,
+          #0e1017 4px,
+          #1f2430 6px,
+          #0a0c10 8px
+        );
+      box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: spinVinyl 16s linear infinite;
+    }
+    .np-vinyl-sheen {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 45deg at 50% 50%,
+        rgba(255, 255, 255, 0.16) 0deg,
+        transparent 45deg,
+        rgba(255, 255, 255, 0.16) 180deg,
+        transparent 225deg,
+        rgba(255, 255, 255, 0.16) 360deg
+      );
+      pointer-events: none;
+    }
+    .np-vinyl-label {
+      position: relative;
+      width: 38%;
+      height: 38%;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.8);
+      background: #0f172a;
+    }
+    .np-vinyl-cover-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .np-vinyl-spindle-hole {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 18px;
+      height: 18px;
+      background: radial-gradient(circle, #cbd5e1 0%, #334155 70%, #0f172a 100%);
+      border: 2px solid #000;
+      border-radius: 50%;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.8), 0 0 8px rgba(255,255,255,0.4);
+      z-index: 5;
+    }
+
+    /* Track Meta Under Vinyl */
+    .np-track-meta {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .np-track-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+    .np-track-artist {
+      font-size: 1.05rem;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    .np-meta-badges {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient Mica Background Blobs -->
+  <div class="ambient-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+  <div class="grid-overlay"></div>
+
+  <!-- Top Bar: Windows Acrylic + Vector Fluent Navigation -->
+  <header class="top-bar">
+    <div class="top-left">
+      <div class="app-brand">
+        <div class="app-brand-logo">
+          <i data-lucide="waveform"></i>
+        </div>
+        <span class="app-brand-name">MyMusic Hi-Res</span>
+      </div>
+      <div class="nav-arrows">
+        <button class="nav-btn" title="Quay lại"><i data-lucide="chevron-left"></i></button>
+        <button class="nav-btn" title="Tiếp theo"><i data-lucide="chevron-right"></i></button>
+      </div>
+    </div>
+
+    <!-- Center Search Bar -->
+    <div class="top-center">
+      <div class="search-box">
+        <i data-lucide="search"></i>
+        <input type="text" placeholder="Tìm kiếm bài hát, nghệ sĩ, album hoặc dán link Google Drive...">
+        <span class="search-shortcut">Ctrl + K</span>
+      </div>
+    </div>
+
+    <div class="top-right">
+      <button class="add-music-btn">
+        <i data-lucide="plus"></i> Thêm Nhạc
+      </button>
+
+      <div class="window-controls">
+        <div class="win-btn" title="Thu nhỏ">─</div>
+        <div class="win-btn" title="Phóng to">▢</div>
+        <div class="win-btn close" title="Đóng">✕</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- App Main Body -->
+  <div class="app-body">
+    
+    <!-- Left Navigation Sidebar with Professional Vector Icons -->
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-section">
+          <div class="sidebar-title">Thư viện của bạn</div>
+          <ul class="nav-list">
+            <li class="nav-item active">
+              <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
+              <span>Khám phá (Dashboard)</span>
+            </li>
+            <li class="nav-item">
+              <span class="nav-icon"><i data-lucide="music-2"></i></span>
+              <span>Tất cả bài hát</span>
+              <span class="badge-count">45</span>
+            </li>
+            <li class="nav-item">
+              <span class="nav-icon"><i data-lucide="disc-3"></i></span>
+              <span>Album & Tuyển tập</span>
+              <span class="badge-count">6</span>
+            </li>
+            <li class="nav-item">
+              <span class="nav-icon"><i data-lucide="mic-2"></i></span>
+              <span>Nghệ sĩ</span>
+            </li>
+            <li class="nav-item">
+              <span class="nav-icon"><i data-lucide="heart"></i></span>
+              <span>Bài hát yêu thích</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-title">Nguồn nhạc (Sources)</div>
+          <ul class="nav-list">
+            <li class="nav-item">
+              <span class="nav-icon"><i data-lucide="laptop"></i></span>
+              <span>Thư mục máy (Local)</span>
+              <span class="badge-count">7</span>
+            </li>
+            <li class="nav-item">
+              <span class="nav-icon"><i data-lucide="cloud"></i></span>
+              <span>Google Drive</span>
+              <span class="badge-count">38</span>
+            </li>
+            <li class="nav-item">
+              <span class="nav-icon"><i data-lucide="hard-drive-download"></i></span>
+              <span>Đã tải Offline</span>
+              <span class="badge-count">1</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Zero-Disk Storage RAM Card at Bottom of Sidebar -->
+      <div class="ram-buffer-card">
+        <div class="ram-title">
+          <i data-lucide="zap"></i> Zero-Disk RAM Ring
+        </div>
+        <div class="ram-desc">
+          Bộ đệm nạp trước 3 bài (94.5 MB). 0 ghi ổ cứng.
+        </div>
+        <div class="ram-meter">
+          <div class="ram-meter-fill"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main View Dashboard -->
+    <main class="main-view">
+      
+      <!-- Top Row: Header + Floating Mini Player -->
+      <div class="dashboard-top-row">
+        <div class="dashboard-header-text">
+          <h1>Dashboard</h1>
+          
+          <div class="filter-chips">
+            <div class="chip active">Tất cả (45)</div>
+            <div class="chip">Google Drive (38)</div>
+            <div class="chip">Cục bộ / PC (7)</div>
+            <div class="chip">Hi-Res 24-bit / 96kHz</div>
+            <div class="chip">FLAC Lossless</div>
+            <div class="chip">Đã lưu Offline (1)</div>
+          </div>
+        </div>
+
+        <!-- Floating Mini Now Playing Card (Click opens Vinyl Turntable!) -->
+        <div class="mini-player-widget" id="mini-widget-trigger" title="Bấm để mở Mâm Đĩa Than toàn màn hình">
+          <img class="mini-cover" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=120&q=80" alt="Cover">
+          <div class="mini-info">
+            <div class="mini-title">Ai Mới Là Kẻ Xấu Xa</div>
+            <div class="mini-artist">RPT MCK • HVL</div>
+            <div class="mini-now-indicator">
+              <div class="sound-bars">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+              </div>
+              <span>Đang phát 24-bit/96kHz</span>
+            </div>
+          </div>
+          <i data-lucide="maximize-2" style="color: var(--text-dim); width: 16px; height: 16px;"></i>
+        </div>
+      </div>
+
+      <!-- Section 1: Carousel Artists / Albums -->
+      <div>
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <div class="section-title">Nghệ Sĩ & Album Thịnh Hành</div>
+            <span class="section-tag">Thư Viện Của Bạn</span>
+          </div>
+          <div class="carousel-nav">
+            <button class="carousel-btn"><i data-lucide="chevron-left"></i></button>
+            <button class="carousel-btn"><i data-lucide="chevron-right"></i></button>
+          </div>
+        </div>
+
+        <div class="card-carousel">
+          <!-- Card 1 -->
+          <div class="music-card">
+            <div class="card-cover-wrap">
+              <img class="card-cover-img" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&q=80" alt="MCK">
+              <div class="card-tag">FLAC 24-bit</div>
+              <div class="card-play-hover">
+                <div class="card-play-icon"><i data-lucide="play"></i></div>
+              </div>
+            </div>
+            <div class="card-name">99% (Album)</div>
+            <div class="card-sub">RPT MCK • 16 bài</div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="music-card">
+            <div class="card-cover-wrap">
+              <img class="card-cover-img" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80" alt="Lemon">
+              <div class="card-tag">Lossless</div>
+              <div class="card-play-hover">
+                <div class="card-play-icon"><i data-lucide="play"></i></div>
+              </div>
+            </div>
+            <div class="card-name">Kenshi Yonezu</div>
+            <div class="card-sub">Lemon • Stray Sheep</div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="music-card">
+            <div class="card-cover-wrap">
+              <img class="card-cover-img" src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80" alt="Sơn Tùng">
+              <div class="card-tag">Hi-Res</div>
+              <div class="card-play-hover">
+                <div class="card-play-icon"><i data-lucide="play"></i></div>
+              </div>
+            </div>
+            <div class="card-name">Sơn Tùng M-TP</div>
+            <div class="card-sub">Hãy Trao Cho Anh</div>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="music-card">
+            <div class="card-cover-wrap">
+              <img class="card-cover-img" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&q=80" alt="Audiophile">
+              <div class="card-tag">192kHz</div>
+              <div class="card-play-hover">
+                <div class="card-play-icon"><i data-lucide="play"></i></div>
+              </div>
+            </div>
+            <div class="card-name">Tuyển Tập Tuyệt Phẩm</div>
+            <div class="card-sub">Audiophile Master • 24 bài</div>
+          </div>
+
+          <!-- Card 5 -->
+          <div class="music-card">
+            <div class="card-cover-wrap">
+              <img class="card-cover-img" src="https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&q=80" alt="Vũ">
+              <div class="card-tag">FLAC</div>
+              <div class="card-play-hover">
+                <div class="card-play-icon"><i data-lucide="play"></i></div>
+              </div>
+            </div>
+            <div class="card-name">Vũ. (Hoàng Thái Vũ)</div>
+            <div class="card-sub">Bảo Tàng Của Nuối Tiếc</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Nuclear Tracklist -->
+      <div>
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <div class="section-title">Danh Sách Bài Hát (Top Tracks)</div>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <!-- Table Toolbar -->
+          <div class="table-toolbar">
+            <div class="toolbar-actions">
+              <button class="play-all-btn">
+                <i data-lucide="play"></i> Phát Tất Cả
+              </button>
+              <button class="secondary-tool-btn" title="Tạo Album / Playlist"><i data-lucide="plus"></i></button>
+              <button class="secondary-tool-btn" title="Trộn bài ngẫu nhiên"><i data-lucide="shuffle"></i></button>
+            </div>
+            <div class="table-search">
+              <i data-lucide="search"></i>
+              <input type="text" placeholder="Lọc bài hát trong bảng...">
+            </div>
+          </div>
+
+          <!-- Table Content -->
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 44px; text-align: center;">♥</th>
+                <th>Bài hát & Tiêu đề</th>
+                <th>Nghệ sĩ</th>
+                <th>Album</th>
+                <th>Định dạng</th>
+                <th>Nguồn</th>
+                <th style="text-align: right;">Thời lượng</th>
+                <th style="width: 80px; text-align: center;">Tác vụ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Row 1 (Playing) -->
+              <tr class="playing">
+                <td style="text-align: center;"><i data-lucide="heart" class="heart-icon filled"></i></td>
+                <td>
+                  <div class="td-title-wrap">
+                    <img class="track-thumb" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&q=80" alt="thumb">
+                    <div>
+                      <div class="track-name-bold">Ai Mới Là Kẻ Xấu Xa</div>
+                      <div class="track-badges">
+                        <span class="badge-hires">FLAC 24-bit / 96kHz</span>
+                        <span class="badge-ram"><i data-lucide="zap"></i> RAM Ready</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td style="font-weight: 600; color: #f3e8ff;">RPT MCK</td>
+                <td>HVL</td>
+                <td><span class="badge-hires">24-bit / 96k</span></td>
+                <td><span class="badge-source"><i data-lucide="cloud"></i> Drive</span></td>
+                <td style="text-align: right; font-variant-numeric: tabular-nums;">3:12</td>
+                <td style="text-align: center;">
+                  <div class="action-icons">
+                    <span title="Đã lưu offline"><i data-lucide="check-circle-2" style="color: #4ade80;"></i></span>
+                    <span title="Tùy chọn"><i data-lucide="more-horizontal"></i></span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 2 -->
+              <tr>
+                <td style="text-align: center;"><i data-lucide="heart" class="heart-icon empty"></i></td>
+                <td>
+                  <div class="td-title-wrap">
+                    <img class="track-thumb" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&q=80" alt="thumb">
+                    <div>
+                      <div class="track-name-bold">Xa Xôi (feat. Obito)</div>
+                      <div class="track-badges">
+                        <span class="badge-hires">FLAC 24-bit / 96kHz</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>RPT MCK</td>
+                <td>HVL</td>
+                <td><span class="badge-hires">24-bit / 96k</span></td>
+                <td><span class="badge-source"><i data-lucide="cloud"></i> Drive</span></td>
+                <td style="text-align: right; font-variant-numeric: tabular-nums;">3:37</td>
+                <td style="text-align: center;">
+                  <div class="action-icons">
+                    <span title="Tải Offline"><i data-lucide="download"></i></span>
+                    <span title="Tùy chọn"><i data-lucide="more-horizontal"></i></span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 3 -->
+              <tr>
+                <td style="text-align: center;"><i data-lucide="heart" class="heart-icon empty"></i></td>
+                <td>
+                  <div class="td-title-wrap">
+                    <img class="track-thumb" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&q=80" alt="thumb">
+                    <div>
+                      <div class="track-name-bold">Yêu Anh Giết Anh</div>
+                      <div class="track-badges">
+                        <span class="badge-hires">FLAC 24-bit / 96kHz</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>RPT MCK</td>
+                <td>HVL</td>
+                <td><span class="badge-hires">24-bit / 96k</span></td>
+                <td><span class="badge-source"><i data-lucide="cloud"></i> Drive</span></td>
+                <td style="text-align: right; font-variant-numeric: tabular-nums;">2:45</td>
+                <td style="text-align: center;">
+                  <div class="action-icons">
+                    <span title="Tải Offline"><i data-lucide="download"></i></span>
+                    <span title="Tùy chọn"><i data-lucide="more-horizontal"></i></span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 4 -->
+              <tr>
+                <td style="text-align: center;"><i data-lucide="heart" class="heart-icon filled"></i></td>
+                <td>
+                  <div class="td-title-wrap">
+                    <img class="track-thumb" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&q=80" alt="thumb">
+                    <div>
+                      <div class="track-name-bold">Cánh Buồm Đỏ Thắm</div>
+                      <div class="track-badges">
+                        <span class="badge-ram"><i data-lucide="zap"></i> RAM Ready</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>Tuyển Tập Tuyệt Phẩm</td>
+                <td>Album test</td>
+                <td><span class="badge-source">16-bit / 44.1k</span></td>
+                <td><span class="badge-source"><i data-lucide="cloud"></i> Drive</span></td>
+                <td style="text-align: right; font-variant-numeric: tabular-nums;">5:09</td>
+                <td style="text-align: center;">
+                  <div class="action-icons">
+                    <span title="Tải Offline"><i data-lucide="download"></i></span>
+                    <span title="Tùy chọn"><i data-lucide="more-horizontal"></i></span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 5 -->
+              <tr>
+                <td style="text-align: center;"><i data-lucide="heart" class="heart-icon empty"></i></td>
+                <td>
+                  <div class="td-title-wrap">
+                    <img class="track-thumb" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&q=80" alt="thumb">
+                    <div>
+                      <div class="track-name-bold">Con Đường Màu Xanh</div>
+                      <div class="track-badges">
+                        <span class="badge-ram"><i data-lucide="zap"></i> RAM Ready</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>Tuyển Tập Tuyệt Phẩm</td>
+                <td>Album test</td>
+                <td><span class="badge-source">16-bit / 44.1k</span></td>
+                <td><span class="badge-source"><i data-lucide="cloud"></i> Drive</span></td>
+                <td style="text-align: right; font-variant-numeric: tabular-nums;">5:20</td>
+                <td style="text-align: center;">
+                  <div class="action-icons">
+                    <span title="Tải Offline"><i data-lucide="download"></i></span>
+                    <span title="Tùy chọn"><i data-lucide="more-horizontal"></i></span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Bottom Acrylic Player Bar -->
+  <footer class="player-dock">
+    <!-- Left: Rotating Mini Vinyl + Title (Clickable to open Vinyl Turntable!) -->
+    <div class="player-left" id="dock-left-trigger" title="Bấm vào đĩa than hoặc tên bài để mở mâm đĩa xoay toàn màn hình">
+      <div class="dock-vinyl">
+        <div class="dock-vinyl-center"></div>
+      </div>
+      <div class="dock-info">
+        <div class="dock-title">Ai Mới Là Kẻ Xấu Xa</div>
+        <div class="dock-artist">
+          <span>RPT MCK • HVL</span>
+          <span class="dock-open-tip">⤢ Mở đĩa than</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Playback Controls & Glowing Seekbar -->
+    <div class="player-center">
+      <div class="playback-buttons">
+        <button class="ctrl-btn" title="Trộn ngẫu nhiên"><i data-lucide="shuffle"></i></button>
+        <button class="ctrl-btn" title="Bài trước"><i data-lucide="skip-back"></i></button>
+        <button class="play-pause-orb" title="Tạm dừng / Tiếp tục"><i data-lucide="pause"></i></button>
+        <button class="ctrl-btn" title="Bài tiếp"><i data-lucide="skip-forward"></i></button>
+        <button class="ctrl-btn" title="Lặp lại"><i data-lucide="repeat"></i></button>
+      </div>
+
+      <div class="seekbar-row">
+        <span class="time-stamp">1:24</span>
+        <div class="seekbar">
+          <div class="seekbar-fill"></div>
+        </div>
+        <span class="time-stamp right">3:12</span>
+      </div>
+    </div>
+
+    <!-- Right: Hi-Res Audio Engine, Volume & Queue (Clean studio look - No redundant big button) -->
+    <div class="player-right">
+      <div class="vol-control">
+        <button class="ctrl-btn" title="Âm lượng"><i data-lucide="volume-2"></i></button>
+        <div class="vol-slider"><div class="vol-fill"></div></div>
+      </div>
+      <button class="ctrl-btn" title="Danh sách phát chờ (Queue)"><i data-lucide="list-music"></i></button>
+      <div class="wasapi-badge" title="WASAPI Exclusive Output">
+        <i data-lucide="shield-check"></i> Bit-Perfect WASAPI
+      </div>
+    </div>
+  </footer>
+
+  <!-- =========================================================
+       NOW PLAYING IMMERSIVE VIEW (VINYL TURNTABLE OVERLAY)
+       ========================================================= -->
+  <div id="now-playing-overlay" class="np-overlay">
+    <!-- Blurred Backdrop -->
+    <div class="np-backdrop">
+      <img class="np-backdrop-img" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=800&q=80" alt="Backdrop">
+      <div class="np-backdrop-gradient"></div>
+    </div>
+
+    <div class="np-container">
+      <!-- Top Bar in Overlay -->
+      <div class="np-topbar">
+        <button class="np-btn" id="np-minimize-btn">
+          <i data-lucide="chevron-down"></i> Thu nhỏ
+        </button>
+        
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);">
+            HI-RES BIT-PERFECT
+          </span>
+          <span style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1;">
+            Ai Mới Là Kẻ Xấu Xa – RPT MCK
+          </span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button class="np-btn" title="Đã lưu offline"><i data-lucide="check-circle-2" style="color: #4ade80;"></i> Đã lưu Offline</button>
+          <button class="np-btn" title="Đổi ảnh bìa"><i data-lucide="image"></i> Đổi bìa</button>
+          <button class="np-btn" title="Toàn màn hình"><i data-lucide="maximize"></i> Toàn màn hình</button>
+          <button class="np-close-btn" id="np-close-btn" title="Đóng đĩa than">✕</button>
+        </div>
+      </div>
+
+      <!-- Center Turntable Platter -->
+      <div class="np-vinyl-center-container">
+        <div class="np-turntable-platter">
+          <!-- Tonearm -->
+          <div class="np-tonearm">
+            <div class="np-arm-pivot"></div>
+            <div class="np-arm-rod"></div>
+            <div class="np-arm-head">
+              <div class="np-arm-needle-light"></div>
+            </div>
+          </div>
+
+          <!-- Rotating Vinyl Disc -->
+          <div class="np-vinyl-disc">
+            <div class="np-vinyl-sheen"></div>
+            <div class="np-vinyl-label">
+              <img class="np-vinyl-cover-img" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80" alt="Label Cover">
+            </div>
+            <div class="np-vinyl-spindle-hole"></div>
+          </div>
+        </div>
+
+        <!-- Track Info Under Vinyl -->
+        <div class="np-track-meta">
+          <div class="np-track-title">Ai Mới Là Kẻ Xấu Xa</div>
+          <div class="np-track-artist">RPT MCK • HVL</div>
+          <div class="np-meta-badges">
+            <span class="badge-hires">FLAC 24-bit / 96kHz</span>
+            <span class="badge-ram"><i data-lucide="zap"></i> Zero-Disk RAM Ready</span>
+            <span class="badge-source" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.3);"><i data-lucide="check-circle-2"></i> Đã lưu Offline</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Audio Controls in Overlay -->
+      <div style="max-width: 680px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div class="seekbar-row">
+          <span class="time-stamp">1:24</span>
+          <div class="seekbar">
+            <div class="seekbar-fill"></div>
+          </div>
+          <span class="time-stamp right">3:12</span>
+        </div>
+        <div class="playback-buttons">
+          <button class="ctrl-btn" title="Trộn ngẫu nhiên"><i data-lucide="shuffle"></i></button>
+          <button class="ctrl-btn" title="Bài trước"><i data-lucide="skip-back"></i></button>
+          <button class="play-pause-orb" title="Tạm dừng / Tiếp tục"><i data-lucide="pause"></i></button>
+          <button class="ctrl-btn" title="Bài tiếp"><i data-lucide="skip-forward"></i></button>
+          <button class="ctrl-btn" title="Lặp lại"><i data-lucide="repeat"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide vector icons
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+
+    const overlay = document.getElementById('now-playing-overlay');
+    const dockTrigger = document.getElementById('dock-left-trigger');
+    const miniWidgetTrigger = document.getElementById('mini-widget-trigger');
+    const closeBtn = document.getElementById('np-close-btn');
+    const minimizeBtn = document.getElementById('np-minimize-btn');
+
+    function openVinyl() {
+      overlay.classList.add('active');
+    }
+
+    function closeVinyl() {
+      overlay.classList.remove('active');
+    }
+
+    // Click on vinyl thumbnail or title in bottom dock
+    if (dockTrigger) {
+      dockTrigger.addEventListener('click', openVinyl);
+    }
+
+    // Click on mini top-right widget
+    if (miniWidgetTrigger) {
+      miniWidgetTrigger.addEventListener('click', openVinyl);
+    }
+
+    // Close buttons
+    if (closeBtn) closeBtn.addEventListener('click', closeVinyl);
+    if (minimizeBtn) minimizeBtn.addEventListener('click', closeVinyl);
+
+    // Escape key
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeVinyl();
+    });
+  </script>
+</body>
+</html>
