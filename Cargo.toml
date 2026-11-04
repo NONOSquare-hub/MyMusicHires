@@ -25,6 +25,10 @@ walkdir = "2.5.0"
 open = "5.4.5"
 rfd = "0.15"
 rodio = { version = "0.23.0", features = ["flac", "mp3", "wav"] }
+reqwest = { version = "0.12", default-features = true, features = ["stream", "json"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "json"] }
 
 [profile.dev]
 opt-level = 2

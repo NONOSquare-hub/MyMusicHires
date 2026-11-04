@@ -48,7 +48,7 @@ jobs:
           yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0" || true
 
-      - name: Initialize Tauri Android
+      - name: Initialize Tauri Android & Configure AndroidManifest
         run: |
           cd src-tauri
           if [ ! -d "gen/android" ]; then
@@ -57,6 +57,17 @@ jobs:
           fi
           if [ -f "gen/android/gradlew" ]; then
             chmod +x gen/android/gradlew
+          fi
+
+          MANIFEST="gen/android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST" ]; then
+            echo "Injecting Android permissions and enabling cleartext traffic..."
+            # Enable cleartext traffic for local Axum server communication
+            sed -i 's/<application/<application android:usesCleartextTraffic="true"/' "$MANIFEST"
+            # Ensure Internet, Storage and Audio permissions
+            sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />' "$MANIFEST"
+            echo "=== Updated AndroidManifest.xml ==="
+            cat "$MANIFEST" | head -n 35
           fi
 
       - name: Build Android APK
@@ -116,19 +127,25 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: success()
         with:
-          tag_name: v1.0.0
-          name: "MyMusic Hi-Res v1.0.0"
+          tag_name: v1.0.1
+          name: "MyMusic Hi-Res v1.0.1 (Hotfix Update)"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 🎵 MyMusic Hi-Res - Audiophile Player v1.0.0
+            ## 🎵 MyMusic Hi-Res - Audiophile Player v1.0.1 (Bản vá lỗi Android)
 
             ### 📱 Tải về trực tiếp cho Android (Không cần tài khoản GitHub):
             Bấm trực tiếp vào file **`MyMusic.apk`** bên dưới phần **Assets** để tải và cài đặt ngay lên điện thoại.
 
-            - **Kiến trúc:** ARM64 (`aarch64-linux-android`)
-            - **Tính năng:** Nghe nhạc Offline 100%, Vinyl Turntable, Đồng bộ Google Drive, Sao lưu JSON.
+            ### 🚀 Bản vá v1.0.1:
+            - **Khắc phục lỗi quét Google Drive trên Android:** Thay thế toàn diện cơ chế gọi process `curl.exe` bằng HTTP Client native Rust (`reqwest` + `rustls-tls`), quét và stream trực tiếp không phụ thuộc hệ điều hành.
+            - **Khắc phục lỗi giao diện:** 
+              - Nâng vị trí thanh thông báo (Toast) lên đỉnh màn hình, không còn che khuất các nút bấm hoặc modal Google Drive.
+              - Căn chỉnh thanh điều hướng dưới đáy (`bottom-nav`) tương thích chuẩn thanh vuốt cử chỉ Android Gesture Navigation Bar (`env(safe-area-inset-bottom)`).
+              - Sửa lỗi thanh chip phân loại (Hi-Res, Google Drive...) không bị cắt chữ.
+              - Tự động ẩn nút "Phát tất cả ( 0 )" khi thư viện chưa có nhạc và hiển thị thẻ hướng dẫn thêm nhạc thân thiện.
+            - **Cấp quyền mạng & bộ nhớ Android:** Bật `usesCleartextTraffic` và quyền `READ_MEDIA_AUDIO`, `INTERNET`.
           files: |
             dist/MyMusic.apk
         env:

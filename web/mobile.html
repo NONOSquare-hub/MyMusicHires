@@ -214,7 +214,7 @@
       gap: 8px;
       overflow-x: auto;
       scrollbar-width: none;
-      padding: 4px 0 6px 0;
+      padding: 4px 24px 6px 2px;
       -webkit-overflow-scrolling: touch;
       flex-shrink: 0;
       min-height: 44px;
@@ -742,7 +742,7 @@
       position: fixed;
       left: 10px;
       right: 10px;
-      bottom: calc(60px + env(safe-area-inset-bottom, 4px) + 8px);
+      bottom: calc(58px + env(safe-area-inset-bottom, 16px) + 8px);
       height: 58px;
       border-radius: 16px;
       background: rgba(10, 18, 34, 0.96);
@@ -882,11 +882,11 @@
       bottom: 0;
       left: 0;
       right: 0;
-      height: 60px;
-      padding-bottom: env(safe-area-inset-bottom, 4px);
-      background: rgba(8, 14, 28, 0.95);
+      height: calc(56px + env(safe-area-inset-bottom, 16px));
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+      background: rgba(8, 14, 28, 0.96);
       backdrop-filter: blur(36px) saturate(200%);
-      border-top: 1px solid rgba(74, 222, 222, 0.12);
+      border-top: 1px solid rgba(74, 222, 222, 0.14);
       display: flex;
       align-items: center;
       justify-content: space-around;
@@ -1663,25 +1663,29 @@
     .ctx-btn-sub { font-size: 0.68rem; color: var(--text-dim); margin-top: 1px; }
     .ctx-arrow { width: 14px; height: 14px; stroke: var(--text-dim); flex-shrink: 0; }
 
-    /* Mobile Floating Toast */
+    /* Mobile Floating Toast - Top Positioned & Non-Obtrusive */
     #mobile-toast {
       position: fixed;
-      bottom: calc(75px + env(safe-area-inset-bottom, 8px));
+      top: calc(env(safe-area-inset-top, 12px) + 60px);
       left: 50%;
-      transform: translateX(-50%) translateY(30px);
+      transform: translateX(-50%) translateY(-24px);
       background: rgba(10, 18, 34, 0.96);
-      border: 1px solid #4ADEDE;
+      border: 1px solid rgba(74, 222, 222, 0.6);
       color: #fff;
-      padding: 9px 18px;
+      padding: 10px 20px;
       border-radius: 999px;
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       font-weight: 600;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8), 0 0 10px rgba(74, 222, 222, 0.4);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 15px rgba(74, 222, 222, 0.35);
       z-index: 9999999;
       pointer-events: none;
       opacity: 0;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      white-space: nowrap;
+      transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 90vw;
+      text-align: center;
+      line-height: 1.4;
+      white-space: normal;
+      word-break: break-word;
     }
     #mobile-toast.show {
       transform: translateX(-50%) translateY(0);
@@ -3587,22 +3591,22 @@
       const carouselHeading = document.getElementById('carousel-heading');
       
       if (currentNavTab === 'dashboard') {
-        carouselSec.style.display = 'flex';
+        carouselSec.style.display = tracks.length > 0 ? 'flex' : 'none';
         carouselHeading.innerText = 'Album & Nghệ Sĩ Nổi Bật';
-        renderCarousel('albums_and_artists');
+        if (tracks.length > 0) renderCarousel('albums_and_artists');
         renderSongCards(getFilteredTracks());
       } else if (currentNavTab === 'all') {
         carouselSec.style.display = 'none';
         renderSongCards(getFilteredTracks());
       } else if (currentNavTab === 'album') {
-        carouselSec.style.display = 'flex';
+        carouselSec.style.display = tracks.length > 0 ? 'flex' : 'none';
         carouselHeading.innerText = selectedAlbumFilter ? `Album: ${selectedAlbumFilter}` : 'Tất Cả Album';
-        renderCarousel('albums_only');
+        if (tracks.length > 0) renderCarousel('albums_only');
         renderSongCards(getFilteredTracks());
       } else if (currentNavTab === 'artist') {
-        carouselSec.style.display = 'flex';
+        carouselSec.style.display = tracks.length > 0 ? 'flex' : 'none';
         carouselHeading.innerText = selectedArtistFilter ? `Nghệ Sĩ: ${selectedArtistFilter}` : 'Danh Sách Nghệ Sĩ';
-        renderCarousel('artists_only');
+        if (tracks.length > 0) renderCarousel('artists_only');
         renderSongCards(getFilteredTracks());
       } else if (currentNavTab === 'favorites') {
         carouselSec.style.display = 'none';
@@ -3733,18 +3737,32 @@
       const container = document.getElementById('songs-list');
       container.innerHTML = '';
       document.getElementById('tracks-count-badge').innerText = list.length;
+      const toolbar = document.getElementById('normal-toolbar');
 
       if (list.length === 0) {
+        if (toolbar) toolbar.style.display = 'none';
+        const isGlobalEmpty = (!tracks || tracks.length === 0);
         container.innerHTML = `
-          <div style="text-align:center; padding:50px 20px; color:var(--text-dim);">
-            <i data-lucide="music" style="width:40px; height:40px; opacity:0.4; margin-bottom:8px;"></i>
-            <div style="font-size:0.9rem; font-weight:600; color:#fff;">Không có bài hát nào</div>
-            <div style="font-size:0.75rem; margin-top:4px;">Thử chuyển bộ lọc khác</div>
+          <div style="text-align:center; padding:45px 20px; color:var(--text-dim);">
+            <div style="width:68px; height:68px; border-radius:50%; background:rgba(74,222,222,0.1); border:1px solid rgba(74,222,222,0.25); display:inline-flex; align-items:center; justify-content:center; margin-bottom:14px; color:#4ADEDE;">
+              <i data-lucide="music" style="width:34px; height:34px;"></i>
+            </div>
+            <div style="font-size:0.95rem; font-weight:700; color:#fff;">${isGlobalEmpty ? 'Thư viện chưa có nhạc' : 'Không có bài hát nào'}</div>
+            <div style="font-size:0.78rem; margin:8px auto 18px; max-width:280px; line-height:1.45;">
+              ${isGlobalEmpty ? 'Thêm bài hát từ điện thoại hoặc dán link Google Drive để thưởng thức âm thanh Hi-Res.' : 'Thử chuyển sang bộ lọc hoặc tab khác.'}
+            </div>
+            ${isGlobalEmpty ? `
+              <button class="btn-action-primary" onclick="openSourceModal()" style="width:auto; min-width:180px; padding:10px 24px; margin:0 auto; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                <i data-lucide="folder-plus" style="width:18px; height:18px;"></i> Thêm Nhạc Ngay
+              </button>
+            ` : ''}
           </div>
         `;
         refreshIcons();
         return;
       }
+
+      if (toolbar) toolbar.style.display = 'flex';
 
       list.forEach(t => {
         const isCurrent = t.id === currentPlayingId;

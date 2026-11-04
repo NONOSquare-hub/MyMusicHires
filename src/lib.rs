@@ -16,10 +16,18 @@ use std::{
     sync::{mpsc, Arc, RwLock},
     time::Duration,
 };
-use tokio::process::Command as TokioCommand;
 use tokio_util::io::ReaderStream;
 use tower_http::cors::CorsLayer;
 use walkdir::WalkDir;
+
+fn get_http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .timeout(Duration::from_secs(30))
+        .build()
+        .unwrap_or_default()
+}
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Track {
@@ -1481,22 +1489,18 @@ async fn download_offline_tracks(
         let dest = cache_dir.join(format!("track_{}.{}", track.id, ext)).to_string_lossy().to_string();
 
         if track.file_path.starts_with("http") {
-            let output = TokioCommand::new("curl.exe")
-                .arg("-sL")
-                .arg(&track.file_path)
-                .arg("-o")
-                .arg(&dest)
-                .output()
-                .await;
-
-            if output.is_ok()
-                && StdPath::new(&dest).exists()
-                && StdPath::new(&dest).metadata().map(|m| m.len() > 1000).unwrap_or(false)
-            {
-                let mut tracks = state.tracks.write().unwrap();
-                if let Some(t) = tracks.iter_mut().find(|t| t.id == track.id) {
-                    t.offline_path = Some(dest.clone());
-                    downloaded += 1;
+            let client = get_http_client();
+            if let Ok(resp) = client.get(&track.file_path).send().await {
+                if resp.status().is_success() {
+                    if let Ok(bytes) = resp.bytes().await {
+                        if bytes.len() > 1000 && tokio::fs::write(&dest, &bytes).await.is_ok() {
+                            let mut tracks = state.tracks.write().unwrap();
+                            if let Some(t) = tracks.iter_mut().find(|t| t.id == track.id) {
+                                t.offline_path = Some(dest.clone());
+                                downloaded += 1;
+                            }
+                        }
+                    }
                 }
             }
         } else if StdPath::new(&track.file_path).exists() {
@@ -1648,20 +1652,20 @@ async fn get_lyrics(axum::extract::Query(q): axum::extract::Query<LyricsQuery>) 
         }
     }
 
-    let output = TokioCommand::new("curl.exe")
-        .arg("-s")
-        .arg("-A")
-        .arg("MyMusicHiRes/1.0 (https://github.com/mymusic)")
-        .arg(&url)
-        .output()
-        .await;
+    let client = reqwest::Client::builder()
+        .user_agent("MyMusicHiRes/1.0 (https://github.com/mymusic)")
+        .timeout(Duration::from_secs(10))
+        .build()
+        .unwrap_or_default();
 
-    if let Ok(out) = output {
-        if let Ok(json_str) = String::from_utf8(out.stdout) {
-            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&json_str) {
-                if val.get("syncedLyrics").is_some() || val.get("plainLyrics").is_some() {
-                    let _ = tokio::fs::write(&cache_key, &json_str).await;
-                    return Json(val);
+    if let Ok(resp) = client.get(&url).send().await {
+        if resp.status().is_success() {
+            if let Ok(json_str) = resp.text().await {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                    if val.get("syncedLyrics").is_some() || val.get("plainLyrics").is_some() {
+                        let _ = tokio::fs::write(&cache_key, &json_str).await;
+                        return Json(val);
+                    }
                 }
             }
         }
@@ -1673,21 +1677,15 @@ async fn get_lyrics(axum::extract::Query(q): axum::extract::Query<LyricsQuery>) 
         urlencoding(clean_artist)
     );
 
-    let output2 = TokioCommand::new("curl.exe")
-        .arg("-s")
-        .arg("-A")
-        .arg("MyMusicHiRes/1.0 (https://github.com/mymusic)")
-        .arg(&search_url)
-        .output()
-        .await;
-
-    if let Ok(out) = output2 {
-        if let Ok(json_str) = String::from_utf8(out.stdout) {
-            if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&json_str) {
-                if let Some(first) = arr.into_iter().next() {
-                    let res_str = serde_json::to_string(&first).unwrap_or_default();
-                    let _ = tokio::fs::write(&cache_key, &res_str).await;
-                    return Json(first);
+    if let Ok(resp2) = client.get(&search_url).send().await {
+        if resp2.status().is_success() {
+            if let Ok(json_str) = resp2.text().await {
+                if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&json_str) {
+                    if let Some(first) = arr.into_iter().next() {
+                        let res_str = serde_json::to_string(&first).unwrap_or_default();
+                        let _ = tokio::fs::write(&cache_key, &res_str).await;
+                        return Json(first);
+                    }
                 }
             }
         }
@@ -1793,14 +1791,11 @@ async fn sync_drive(
 ) -> Json<serde_json::Value> {
     let url = payload.url.trim().to_string();
 
-    let output = TokioCommand::new("curl.exe")
-        .arg("-sL")
-        .arg(&url)
-        .output()
-        .await;
+    let client = get_http_client();
+    let resp = client.get(&url).send().await;
 
-    if let Ok(out) = output {
-        let html = String::from_utf8_lossy(&out.stdout);
+    if let Ok(resp) = resp {
+        let html = resp.text().await.unwrap_or_default();
 
         let mut album_name = payload
             .folder_name
@@ -1827,7 +1822,7 @@ async fn sync_drive(
         if extracted.is_empty() {
             return Json(serde_json::json!({
                 "success": false,
-                "error": "Không tìm thấy file nhạc nào trong thư mục Google Drive"
+                "error": "Không tìm thấy file nhạc nào trong thư mục Google Drive (Vui lòng kiểm tra quyền truy cập công khai 'Bất kỳ ai có đường liên kết')"
             }));
         }
 
@@ -1845,18 +1840,18 @@ async fn sync_drive(
                 let mut duration_secs = 0;
 
                 if is_flac {
-                    if let Ok(hdr) = TokioCommand::new("curl.exe")
-                        .arg("-sL")
-                        .arg("-r")
-                        .arg("0-63")
-                        .arg(&download_url)
-                        .output()
+                    if let Ok(hdr_resp) = get_http_client()
+                        .get(&download_url)
+                        .header("Range", "bytes=0-63")
+                        .send()
                         .await
                     {
-                        if let Some((sr, bd, dur)) = parse_flac_header(&hdr.stdout) {
-                            sample_rate = sr;
-                            bit_depth = bd;
-                            duration_secs = dur;
+                        if let Ok(bytes) = hdr_resp.bytes().await {
+                            if let Some((sr, bd, dur)) = parse_flac_header(&bytes) {
+                                sample_rate = sr;
+                                bit_depth = bd;
+                                duration_secs = dur;
+                            }
                         }
                     }
                 }
@@ -1947,20 +1942,23 @@ async fn stream_track(
         }
 
         if track.file_path.starts_with("http") {
-            let mut cmd = TokioCommand::new("curl.exe");
-            cmd.arg("-sL");
-            cmd.arg(&track.file_path);
-            cmd.stdout(std::process::Stdio::piped());
-
-            if let Ok(mut child) = cmd.spawn() {
-                if let Some(stdout) = child.stdout.take() {
-                    let stream = ReaderStream::new(stdout);
+            let client = get_http_client();
+            if let Ok(resp) = client.get(&track.file_path).send().await {
+                if resp.status().is_success() {
+                    let content_type = resp
+                        .headers()
+                        .get(axum::http::header::CONTENT_TYPE)
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or(mime)
+                        .to_string();
+                    let stream = resp.bytes_stream();
                     let body = Body::from_stream(stream);
                     return Response::builder()
                         .status(axum::http::StatusCode::OK)
-                        .header(axum::http::header::CONTENT_TYPE, mime)
+                        .header(axum::http::header::CONTENT_TYPE, content_type)
                         .header(axum::http::header::ACCEPT_RANGES, "bytes")
                         .header(axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                        .header("X-Audio-Source", "STREAM_REQWEST")
                         .body(body)
                         .unwrap();
                 }
@@ -1985,14 +1983,17 @@ async fn stream_track(
 
 async fn extract_track_image(track: &Track) -> Option<(String, Vec<u8>)> {
     let bytes_opt = if track.file_path.starts_with("http") {
-        let output = TokioCommand::new("curl.exe")
-            .arg("-sL")
-            .arg("-r")
-            .arg("0-2097152")
-            .arg(&track.file_path)
-            .output()
-            .await;
-        output.ok().map(|o| o.stdout)
+        let client = get_http_client();
+        if let Ok(resp) = client
+            .get(&track.file_path)
+            .header("Range", "bytes=0-2097152")
+            .send()
+            .await
+        {
+            resp.bytes().await.ok().map(|b| b.to_vec())
+        } else {
+            None
+        }
     } else if let Ok(mut f) = tokio::fs::File::open(&track.file_path).await {
         use tokio::io::AsyncReadExt;
         let mut buf = vec![0u8; 4 * 1024 * 1024];
@@ -2084,16 +2085,17 @@ async fn update_cover(
                 .as_millis();
             let fname = format!("cover_{}.jpg", ts);
             let fpath = covers_dir.join(&fname);
-            let output = TokioCommand::new("curl.exe")
-                .arg("-sL")
-                .arg(url)
-                .arg("-o")
-                .arg(&fpath)
-                .output()
-                .await;
-            if output.is_ok() && StdPath::new(&fpath).exists() && StdPath::new(&fpath).metadata().map(|m| m.len() > 100).unwrap_or(false) {
-                target_cover_val = Some(format!("/api/covers/{}", fname));
-            } else {
+            let client = get_http_client();
+            if let Ok(resp) = client.get(url).send().await {
+                if resp.status().is_success() {
+                    if let Ok(bytes) = resp.bytes().await {
+                        if bytes.len() > 100 && tokio::fs::write(&fpath, &bytes).await.is_ok() {
+                            target_cover_val = Some(format!("/api/covers/{}", fname));
+                        }
+                    }
+                }
+            }
+            if target_cover_val.is_none() {
                 target_cover_val = Some(url.clone());
             }
         }
