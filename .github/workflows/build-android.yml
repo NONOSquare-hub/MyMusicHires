@@ -69,13 +69,13 @@ jobs:
           BUILD_STATUS=$?
           if [ $BUILD_STATUS -ne 0 ]; then
             echo "❌ tauri android build failed with exit code $BUILD_STATUS"
-            echo "### ⚠️ Build Failure Logs (last 40 lines):" >> $GITHUB_STEP_SUMMARY
+            echo "### ⚠️ Build Failure Logs" >> $GITHUB_STEP_SUMMARY
             echo '```text' >> $GITHUB_STEP_SUMMARY
-            tail -n 40 ../build.log >> $GITHUB_STEP_SUMMARY
+            tail -n 60 ../build.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            while IFS= read -r line; do
+            tail -n 30 ../build.log | while IFS= read -r line; do
               echo "::error::$line"
-            done < <(tail -n 25 ../build.log)
+            done
             exit $BUILD_STATUS
           fi
 
