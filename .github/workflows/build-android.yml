@@ -40,8 +40,15 @@ jobs:
           echo "ANDROID_NDK_HOME=$NDK_DIR" >> $GITHUB_ENV
           echo "ANDROID_NDK_ROOT=$NDK_DIR" >> $GITHUB_ENV
           echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
           echo "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "/usr/local/lib/android/sdk/platform-tools" >> $GITHUB_PATH
+          
+          TOOLCHAIN_BIN="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          echo "CC_aarch64_linux_android=$TOOLCHAIN_BIN/aarch64-linux-android24-clang" >> $GITHUB_ENV
+          echo "AR_aarch64_linux_android=$TOOLCHAIN_BIN/llvm-ar" >> $GITHUB_ENV
+          echo "TARGET_CC=$TOOLCHAIN_BIN/aarch64-linux-android24-clang" >> $GITHUB_ENV
+          echo "TARGET_AR=$TOOLCHAIN_BIN/llvm-ar" >> $GITHUB_ENV
 
       - name: Accept Android Licenses & Ensure Platforms
         run: |
@@ -59,33 +66,46 @@ jobs:
             chmod +x gen/android/gradlew
           fi
 
-          MANIFEST="gen/android/app/src/main/AndroidManifest.xml"
-          if [ -f "$MANIFEST" ]; then
-            echo "Injecting Android permissions and enabling cleartext traffic..."
-            # Enable cleartext traffic for local Axum server communication
-            sed -i 's/<application/<application android:usesCleartextTraffic="true"/' "$MANIFEST"
-            # Ensure Internet, Storage and Audio permissions
-            sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />' "$MANIFEST"
-            echo "=== Updated AndroidManifest.xml ==="
-            cat "$MANIFEST" | head -n 35
-          fi
+          python3 -c "
+          manifest_path = 'gen/android/app/src/main/AndroidManifest.xml'
+          try:
+              with open(manifest_path, 'r', encoding='utf-8') as f:
+                  content = f.read()
+
+              # Ensure cleartext traffic for local axum server
+              if 'android:usesCleartextTraffic' not in content:
+                  content = content.replace('<application', '<application android:usesCleartextTraffic=\"true\"')
+
+              # Ensure permissions
+              perms = [
+                  'android.permission.INTERNET',
+                  'android.permission.ACCESS_NETWORK_STATE',
+                  'android.permission.READ_MEDIA_AUDIO',
+                  'android.permission.READ_EXTERNAL_STORAGE'
+              ]
+              for p in perms:
+                  if p not in content:
+                      content = content.replace('</manifest>', f'    <uses-permission android:name=\"{p}\" />\n</manifest>')
+
+              with open(manifest_path, 'w', encoding='utf-8') as f:
+                  f.write(content)
+              print('✅ AndroidManifest.xml successfully patched!')
+          except Exception as e:
+              print('Warning patching manifest:', e)
+          "
 
       - name: Build Android APK
         run: |
           cd src-tauri
           echo "Building APK for aarch64 (debug-signed)..."
-          set +e
-          cargo tauri android build --apk --debug --target aarch64 --ci > ../build.log 2>&1
-          BUILD_STATUS=$?
+          cargo tauri android build --apk --debug --target aarch64 --ci 2>&1 | tee ../build.log
+          BUILD_STATUS=${PIPESTATUS[0]}
           if [ $BUILD_STATUS -ne 0 ]; then
             echo "❌ cargo tauri android build failed with exit code $BUILD_STATUS"
-            echo "### ⚠️ Build Failure Logs" >> $GITHUB_STEP_SUMMARY
+            echo "### ⚠️ Build Failure Logs (Last 100 lines)" >> $GITHUB_STEP_SUMMARY
             echo '```text' >> $GITHUB_STEP_SUMMARY
-            tail -n 60 ../build.log >> $GITHUB_STEP_SUMMARY
+            tail -n 100 ../build.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -n 30 ../build.log | while IFS= read -r line; do
-              echo "::error::$line"
-            done
             exit $BUILD_STATUS
           fi
 
