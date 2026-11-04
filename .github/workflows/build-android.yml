@@ -33,13 +33,19 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@2
 
+      - name: Accept Android Licenses & Setup Environment
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
       - name: Initialize and Build Android APK
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
           CI: "true"
         run: |
           set -e
-          # Detect NDK 26.x (LTS) or latest available
+          # Detect NDK 26 LTS
           export NDK_HOME=$(ls -d /usr/local/lib/android/sdk/ndk/26* 2>/dev/null | head -n 1)
           if [ -z "$NDK_HOME" ]; then
             export NDK_HOME=$(ls -d /usr/local/lib/android/sdk/ndk/* 2>/dev/null | tail -n 1)
@@ -49,33 +55,31 @@ jobs:
           echo "Selected Android NDK: $NDK_HOME"
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
 
-          cd src-tauri
-          if [ ! -d "gen/android" ]; then
+          # Run from repository root
+          if [ ! -d "src-tauri/gen/android" ]; then
             echo "Initializing Tauri Android project..."
             tauri android init --ci
           fi
 
-          echo "Building Android APK (target: aarch64, debug-signed for immediate installation)..."
-          tauri android build --apk --debug --target aarch64 --ci 2>&1 | tee ../build.log
+          echo "Building Android APK (target: aarch64, debug-signed for direct phone install)..."
+          tauri android build --apk --debug --target aarch64 --ci
 
-      - name: Package & Export APK
-        if: always()
+      - name: Locate, Verify & Package APK
         run: |
           mkdir -p dist
-          APK_RAW=$(find src-tauri/gen/android -name "*.apk" 2>/dev/null | head -n 1 || true)
+          echo "=== Searching for generated APK files ==="
+          find . -name "*.apk" -ls
+          
+          APK_RAW=$(find . -name "*.apk" 2>/dev/null | head -n 1 || true)
           if [ -n "$APK_RAW" ] && [ -f "$APK_RAW" ]; then
-            echo "✅ Found APK at: $APK_RAW"
+            echo "✅ Target APK found: $APK_RAW"
             cp "$APK_RAW" dist/MyMusic.apk
             ls -lh dist/MyMusic.apk
-            echo "### 🎵 MyMusic Android APK Build Success!" >> $GITHUB_STEP_SUMMARY
+            echo "### 🎵 MyMusic Android APK Build Complete!" >> $GITHUB_STEP_SUMMARY
             echo "File: \`MyMusic.apk\` ($(du -h dist/MyMusic.apk | cut -f1))" >> $GITHUB_STEP_SUMMARY
-            echo "Directly installable on any Android phone (ARM64)." >> $GITHUB_STEP_SUMMARY
+            echo "Directly installable on any modern Android device (ARM64)." >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ No APK found. Attaching build log excerpt:"
-            echo "### ⚠️ Build Log Summary" >> $GITHUB_STEP_SUMMARY
-            echo '```text' >> $GITHUB_STEP_SUMMARY
-            tail -n 80 build.log >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "❌ No APK binary found in workspace."
             exit 1
           fi
 
