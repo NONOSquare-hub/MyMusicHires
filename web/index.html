@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <script>
     if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) && !window.location.search.includes('desktop=1')) {
-      window.location.replace('/m' + window.location.search);
+      window.location.replace('mobile.html' + window.location.search);
     }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -3795,6 +3795,42 @@
        JAVASCRIPT APPLICATION ENGINE
        ========================================================= -->
   <script>
+    // Auto-detect Tauri or local hybrid runtime to bridge relative API endpoints
+    window.API_BASE = (window.__TAURI__ || window.location.protocol.startsWith('tauri') || window.location.hostname === 'tauri.localhost' || (window.location.port !== '4080' && window.location.hostname.includes('localhost'))) ? 'http://127.0.0.1:4080' : '';
+    if (window.API_BASE) {
+      const _origFetch = window.fetch;
+      window.fetch = function(input, init) {
+        if (typeof input === 'string' && input.startsWith('/')) {
+          input = window.API_BASE + input;
+        }
+        return _origFetch.call(this, input, init);
+      };
+      const _origAudioSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+      if (_origAudioSrc && _origAudioSrc.set) {
+        Object.defineProperty(HTMLMediaElement.prototype, 'src', {
+          set: function(val) {
+            if (typeof val === 'string' && val.startsWith('/')) {
+              val = window.API_BASE + val;
+            }
+            return _origAudioSrc.set.call(this, val);
+          },
+          get: _origAudioSrc.get
+        });
+      }
+      const _origImgSrc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+      if (_origImgSrc && _origImgSrc.set) {
+        Object.defineProperty(HTMLImageElement.prototype, 'src', {
+          set: function(val) {
+            if (typeof val === 'string' && val.startsWith('/')) {
+              val = window.API_BASE + val;
+            }
+            return _origImgSrc.set.call(this, val);
+          },
+          get: _origImgSrc.get
+        });
+      }
+    }
+
     let tracks = [];
     let currentFilter = 'all';
     let currentView = 'dashboard';

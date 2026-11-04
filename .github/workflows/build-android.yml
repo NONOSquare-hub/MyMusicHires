@@ -1,4 +1,4 @@
-name: Build MyMusic Apps (Windows & Android)
+name: Build MyMusic Apps (Android APK)
 
 on:
   push:
@@ -20,12 +20,10 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android NDK
-        run: |
-          sdkmanager --install "ndk;26.1.10909125"
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Setup Rust Stable Toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -33,24 +31,46 @@ jobs:
           targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2.0.0" --locked
+        run: npm install -g @tauri-apps/cli@2
 
       - name: Initialize and Build Android APK
         env:
-          NDK_HOME: /usr/local/lib/android/sdk/ndk/26.1.10909125
+          ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
-          cd src-tauri
-          # Initialize android template if not present
-          if [ ! -d "gen/android" ]; then
-            cargo tauri android init
-          fi
-          # Build APK
-          cargo tauri android build --apk
+          # Detect pre-installed NDK
+          export NDK_HOME=$(ls -d /usr/local/lib/android/sdk/ndk/* 2>/dev/null | sort -V | tail -n 1)
+          export ANDROID_NDK_ROOT=$NDK_HOME
+          echo "Using Android NDK: $NDK_HOME"
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
 
-      - name: Locate and Rename APK
+          cd src-tauri
+          if [ ! -d "gen/android" ]; then
+            tauri android init
+          fi
+          tauri android build --apk --target aarch64
+
+      - name: Sign & Package APK
         run: |
           mkdir -p dist
-          find src-tauri/gen/android -name "*.apk" -exec cp {} dist/MyMusic.apk \;
+          APK_RAW=$(find src-tauri/gen/android -name "*.apk" | head -n 1)
+          if [ -z "$APK_RAW" ]; then
+            echo "❌ No APK binary found!"
+            exit 1
+          fi
+          echo "Found generated APK: $APK_RAW"
+
+          # Generate release keystore
+          keytool -genkeypair -v -keystore release.jks -alias mymusic -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=MyMusic, OU=Audiophile, O=MyMusic, C=VN"
+
+          # Find apksigner
+          APKSIGNER=$(find /usr/local/lib/android/sdk/build-tools -name "apksigner" | sort -V | tail -n 1)
+          echo "Using apksigner at: $APKSIGNER"
+
+          # Sign APK
+          $APKSIGNER sign --ks release.jks --ks-pass pass:123456 --key-pass pass:123456 --out dist/MyMusic.apk "$APK_RAW"
+          $APKSIGNER verify dist/MyMusic.apk
+          echo "✅ Successfully signed dist/MyMusic.apk"
+          ls -lh dist/MyMusic.apk
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4

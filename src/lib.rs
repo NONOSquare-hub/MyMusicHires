@@ -827,6 +827,7 @@ pub async fn start_server(open_browser: bool) {
         .route("/manifest.json", get(manifest_handler))
         .route("/m", get(mobile_handler))
         .route("/mobile", get(mobile_handler))
+        .route("/mobile.html", get(mobile_handler))
         .layer(DefaultBodyLimit::max(250 * 1024 * 1024))
         .layer(CorsLayer::permissive())
         .with_state(app_state);
@@ -844,6 +845,7 @@ pub async fn start_server(open_browser: bool) {
     println!("  Audiophile: WASAPI Exclusive / Bit-Perfect Ready      ");
     println!("=======================================================\n");
 
+    #[cfg(not(target_os = "android"))]
     if open_browser {
         let _ = open::that("http://127.0.0.1:4080");
     }
@@ -1234,24 +1236,27 @@ async fn list_local_folders() -> Json<Vec<serde_json::Value>> {
 }
 
 async fn pick_folder(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    let folder_opt = tokio::task::spawn_blocking(|| {
-        rfd::FileDialog::new()
-            .set_title("Chọn thư mục chứa nhạc trên máy")
-            .pick_folder()
-    })
-    .await
-    .ok()
-    .flatten();
+    #[cfg(not(target_os = "android"))]
+    {
+        let folder_opt = tokio::task::spawn_blocking(|| {
+            rfd::FileDialog::new()
+                .set_title("Chọn thư mục chứa nhạc trên máy")
+                .pick_folder()
+        })
+        .await
+        .ok()
+        .flatten();
 
-    if let Some(folder_path) = folder_opt {
-        let path_str = folder_path.to_string_lossy().to_string();
-        let (added, scanned) = scan_folder_internal(&state, &path_str);
-        return Json(serde_json::json!({
-            "success": true,
-            "canceled": false,
-            "folder": scanned,
-            "added": added
-        }));
+        if let Some(folder_path) = folder_opt {
+            let path_str = folder_path.to_string_lossy().to_string();
+            let (added, scanned) = scan_folder_internal(&state, &path_str);
+            return Json(serde_json::json!({
+                "success": true,
+                "canceled": false,
+                "folder": scanned,
+                "added": added
+            }));
+        }
     }
     Json(serde_json::json!({ "success": false, "canceled": true }))
 }

@@ -13,8 +13,6 @@ path = "src/main.rs"
 
 [dependencies]
 axum = "0.8.9"
-open = "5.4.5"
-rfd = "0.15"
 rodio = { version = "0.23.0", features = ["flac", "mp3", "wav"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
@@ -23,3 +21,7 @@ tokio = { version = "1.54.1", features = ["full"] }
 tokio-util = { version = "0.7.20", features = ["io"] }
 tower-http = { version = "0.7.1", features = ["fs", "cors"] }
 walkdir = "2.5.0"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+open = "5.4.5"
+rfd = "0.15"
