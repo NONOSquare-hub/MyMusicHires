@@ -36,41 +36,48 @@ jobs:
       - name: Initialize and Build Android APK
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
+          CI: "true"
         run: |
-          # Detect pre-installed NDK
-          export NDK_HOME=$(ls -d /usr/local/lib/android/sdk/ndk/* 2>/dev/null | sort -V | tail -n 1)
+          set -e
+          # Detect NDK 26.x (LTS) or latest available
+          export NDK_HOME=$(ls -d /usr/local/lib/android/sdk/ndk/26* 2>/dev/null | head -n 1)
+          if [ -z "$NDK_HOME" ]; then
+            export NDK_HOME=$(ls -d /usr/local/lib/android/sdk/ndk/* 2>/dev/null | tail -n 1)
+          fi
           export ANDROID_NDK_ROOT=$NDK_HOME
-          echo "Using Android NDK: $NDK_HOME"
+          export ANDROID_NDK_HOME=$NDK_HOME
+          echo "Selected Android NDK: $NDK_HOME"
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
 
           cd src-tauri
           if [ ! -d "gen/android" ]; then
-            tauri android init
+            echo "Initializing Tauri Android project..."
+            tauri android init --ci
           fi
-          tauri android build --apk --target aarch64
 
-      - name: Sign & Package APK
+          echo "Building Android APK (target: aarch64, debug-signed for immediate installation)..."
+          tauri android build --apk --debug --target aarch64 --ci 2>&1 | tee ../build.log
+
+      - name: Package & Export APK
+        if: always()
         run: |
           mkdir -p dist
-          APK_RAW=$(find src-tauri/gen/android -name "*.apk" | head -n 1)
-          if [ -z "$APK_RAW" ]; then
-            echo "❌ No APK binary found!"
+          APK_RAW=$(find src-tauri/gen/android -name "*.apk" 2>/dev/null | head -n 1 || true)
+          if [ -n "$APK_RAW" ] && [ -f "$APK_RAW" ]; then
+            echo "✅ Found APK at: $APK_RAW"
+            cp "$APK_RAW" dist/MyMusic.apk
+            ls -lh dist/MyMusic.apk
+            echo "### 🎵 MyMusic Android APK Build Success!" >> $GITHUB_STEP_SUMMARY
+            echo "File: \`MyMusic.apk\` ($(du -h dist/MyMusic.apk | cut -f1))" >> $GITHUB_STEP_SUMMARY
+            echo "Directly installable on any Android phone (ARM64)." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ No APK found. Attaching build log excerpt:"
+            echo "### ⚠️ Build Log Summary" >> $GITHUB_STEP_SUMMARY
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            tail -n 80 build.log >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+            echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-          echo "Found generated APK: $APK_RAW"
-
-          # Generate release keystore
-          keytool -genkeypair -v -keystore release.jks -alias mymusic -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=MyMusic, OU=Audiophile, O=MyMusic, C=VN"
-
-          # Find apksigner
-          APKSIGNER=$(find /usr/local/lib/android/sdk/build-tools -name "apksigner" | sort -V | tail -n 1)
-          echo "Using apksigner at: $APKSIGNER"
-
-          # Sign APK
-          $APKSIGNER sign --ks release.jks --ks-pass pass:123456 --key-pass pass:123456 --out dist/MyMusic.apk "$APK_RAW"
-          $APKSIGNER verify dist/MyMusic.apk
-          echo "✅ Successfully signed dist/MyMusic.apk"
-          ls -lh dist/MyMusic.apk
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
