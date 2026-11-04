@@ -64,19 +64,30 @@ jobs:
         run: |
           cd src-tauri
           echo "Building APK for aarch64 (debug-signed)..."
-          tauri android build --apk --debug --target aarch64 --ci 2>&1 | tee ../build.log
-          BUILD_STATUS=${PIPESTATUS[0]}
+          set +e
+          tauri android build --apk --debug --target aarch64 --ci > ../build.log 2>&1
+          BUILD_STATUS=$?
           if [ $BUILD_STATUS -ne 0 ]; then
-            echo "❌ tauri android build failed with status $BUILD_STATUS"
-            echo "### ⚠️ Build Failure Logs" >> $GITHUB_STEP_SUMMARY
+            echo "❌ tauri android build failed with exit code $BUILD_STATUS"
+            echo "### ⚠️ Build Failure Logs (last 40 lines):" >> $GITHUB_STEP_SUMMARY
             echo '```text' >> $GITHUB_STEP_SUMMARY
-            tail -n 80 ../build.log >> $GITHUB_STEP_SUMMARY
+            tail -n 40 ../build.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
+            while IFS= read -r line; do
+              echo "::error::$line"
+            done < <(tail -n 25 ../build.log)
             exit $BUILD_STATUS
           fi
 
-      - name: Locate, Verify & Package APK
+      - name: Upload Build Log Artifact
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-build-log
+          path: build.log
+
+      - name: Locate, Verify & Package APK
+        if: success()
         run: |
           mkdir -p dist
           echo "=== All APK files generated ==="
@@ -96,6 +107,7 @@ jobs:
           fi
 
       - name: Upload Android APK Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: MyMusic-Android-APK

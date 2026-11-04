@@ -6,6 +6,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+#[cfg(not(target_os = "android"))]
 use rodio::{Decoder, DeviceSinkBuilder, Player};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -700,6 +701,7 @@ pub async fn start_server(open_browser: bool) {
     let tracks = Arc::new(RwLock::new(load_library_from_disk()));
     let status_clone = Arc::clone(&status);
 
+    #[cfg(not(target_os = "android"))]
     std::thread::spawn(move || {
         let handle = DeviceSinkBuilder::open_default_sink().ok();
         let player = handle.as_ref().map(|h| Player::connect_new(&h.mixer()));
@@ -784,6 +786,13 @@ pub async fn start_server(open_browser: bool) {
             }
 
             std::thread::sleep(Duration::from_millis(500));
+        }
+    });
+
+    #[cfg(target_os = "android")]
+    std::thread::spawn(move || {
+        while let Ok(cmd) = cmd_rx.recv() {
+            let _ = cmd;
         }
     });
 
